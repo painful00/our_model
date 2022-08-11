@@ -50,5 +50,14 @@ def load_data(dataset_str):
     for cat in category_index:
         feature_sizes.append(g.ndata['h'][cat].size()[1])
 
+    for node_type in g.ntypes:
+        g.ndata["h"][node_type] = feature_tensor_normalize(g.ndata["h"][node_type])
+
     return g, idx_train, idx_val, idx_test, labels, category_index, feature_sizes, edge_types
 
+
+def feature_tensor_normalize(feature):
+    rowsum = torch.div(1.0, torch.sum(feature, dim=1))
+    rowsum[torch.isinf(rowsum)] = 0.
+    feature = torch.mm(torch.diag(rowsum), feature)
+    return feature

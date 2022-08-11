@@ -7,7 +7,7 @@ import random
 import torch.nn.functional as F
 import torch.optim as optim
 import rcvae_pretrain
-from utils import load_data
+from utils import load_data, feature_tensor_normalize
 
 from tqdm import trange
 
