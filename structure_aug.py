@@ -17,7 +17,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--pretrain_epochs", type=int, default=10)
 parser.add_argument("--batch_size", type=int, default=64)
 parser.add_argument("--latent_size", type=int, default=10)
-parser.add_argument("--pretrain_lr", type=float, default=0.01)
+parser.add_argument("--pretrain_lr", type=float, default=0.001)
 parser.add_argument('--dataset', default='dblp',
                     help='Dataset string.')
 parser.add_argument('--seed', type=int, default=42, help='Random seed.')

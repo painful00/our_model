@@ -19,7 +19,7 @@ def feature_tensor_normalize(feature):
 
 
 def loss_fn(recon_x, x, mean, log_var):
-    BCE = torch.nn.functional.binary_cross_entropy(recon_x, x, reduction='sum')
+    BCE = torch.nn.functional.binary_cross_entropy(recon_x, x, reduction='mean')
     KLD = -0.5 * torch.sum(1 + log_var - mean.pow(2) - log_var.exp())
 
     return (BCE + KLD) / x.size(0)
@@ -46,9 +46,9 @@ def generated_generator(args, device, g, category_index, feature_sizes, edge_typ
     gc.collect()
 
     # Pretrain
-    rcvae = VAE(encoder_layer_sizes=[256, 256],
+    rcvae = VAE(encoder_layer_sizes=[256],
                latent_size=args.latent_size,
-               decoder_layer_sizes=[256, 256],
+               decoder_layer_sizes=[256],
                category_index=category_index,
                feature_sizes=feature_sizes)
     rcvae_optimizer = optim.Adam(rcvae.parameters(), lr=args.pretrain_lr)

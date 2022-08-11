@@ -50,9 +50,6 @@ def load_data(dataset_str):
     for cat in category_index:
         feature_sizes.append(g.ndata['h'][cat].size()[1])
 
-    for node_type in g.ntypes:
-        g.nodes[node_type].data["h"] = feature_tensor_normalize(g.ndata["h"][node_type])
-
     return g, idx_train, idx_val, idx_test, labels, category_index, feature_sizes, edge_types
 
 
