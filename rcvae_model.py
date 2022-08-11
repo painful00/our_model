@@ -36,11 +36,11 @@ class VAE(nn.Module):
 
     def forward(self, x, c, category):
 
-        x = self.map_enc[category[0]](x)
-        c = self.map_enc[category[1]](c)
-        means, log_var = self.encoder(x, c)
+        x_mapped = self.map_enc[category[0]](x)
+        c_mapped = self.map_enc[category[1]](c)
+        means, log_var = self.encoder(x_mapped, c_mapped)
         z = self.reparameterize(means, log_var)
-        recon_x = self.decoder(z, c)
+        recon_x = self.decoder(z, c_mapped)
         recon_x = self.map_dec[category[0]](recon_x)
         recon_x = F.sigmoid(recon_x)
 

@@ -59,7 +59,8 @@ def generated_generator(args, device, g, category_index, feature_sizes, edge_typ
     # Pretrain
     best_augmented_features = None
     rcvae_model = None
-    for _ in trange(args.pretrain_epochs, desc='Run CVAE Train'):
+    for epoch in trange(args.pretrain_epochs, desc='Run CVAE Train'):
+        print("************",epoch,"*************")
         for i in trange(len(rcvae_dataset_dataloaders), desc='Run Edges'):
             rcvae_dataset_dataloader = rcvae_dataset_dataloaders[i]
             category = category_list[i]
@@ -73,7 +74,8 @@ def generated_generator(args, device, g, category_index, feature_sizes, edge_typ
                 rcvae_optimizer.zero_grad()
                 rcvae_loss.backward()
                 rcvae_optimizer.step()
-                print("loss: ", rcvae_loss)
+
+            print("loss: ", rcvae_loss)
 
     torch.save(rcvae.state_dict(), "./output/rcvae.pkl")
 
