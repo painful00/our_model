@@ -42,9 +42,9 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 args.cuda = torch.cuda.is_available()
 
 # Load data
-g, idx_train, idx_val, idx_test, labels, category_index, feature_sizes, edge_types = load_data(args.dataset)
+g, idx_train, idx_val, idx_test, labels, category_index, feature_sizes, edge_types, meta_paths, target_category = load_data(args.dataset)
 
 # Pretrain
 best_augmented_features = None
 
-best_augmented_features, _ = rcvae_pretrain.generated_generator(args, device, g, category_index, feature_sizes, edge_types)
+best_augmented_features = rcvae_pretrain.generated_generator(args, device, g, category_index, feature_sizes, edge_types)
