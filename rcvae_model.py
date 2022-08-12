@@ -55,9 +55,10 @@ class VAE(nn.Module):
 
     def inference(self, z, c, category):
 
-        c = self.map_enc[category[1]](c)
-        recon_x = self.decoder(z, c)
+        c_mapped = self.map_enc[category[1]](c)
+        recon_x = self.decoder(z, c_mapped)
         recon_x = self.map_dec[category[0]](recon_x)
+        recon_x = F.sigmoid(recon_x)
 
         return recon_x
 

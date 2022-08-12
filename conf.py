@@ -39,3 +39,12 @@ class Config(object):
             self.patience = conf.getint('HAN', 'patience')
             self.max_epoch = conf.getint('HAN', 'max_epoch')
             self.mini_batch_flag = conf.getboolean("HAN", "mini_batch_flag")
+
+        # augmentation generator
+        self.arg_encoder_layer_sizes = eval(conf.get('Augmentation', 'encoder_layer_sizes'))
+        self.arg_latent_size = conf.getint('Augmentation', 'latent_size')
+        self.arg_decoder_layer_sizes = eval(conf.get('Augmentation', 'decoder_layer_sizes'))
+        self.arg_argmentation_type = eval(conf.get('Augmentation', 'argmentation_type'))
+        self.arg_argmentation_num = conf.getint('Augmentation', 'argmentation_num')
+        self.is_augmentation = conf.getboolean('Augmentation', 'is_augmentation')
+

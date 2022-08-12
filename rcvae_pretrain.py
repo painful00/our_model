@@ -77,7 +77,7 @@ def generated_generator(args, device, g, category_index, feature_sizes, edge_typ
 
             print("loss: ", rcvae_loss)
 
-    torch.save(rcvae.state_dict(), "./output/rcvae.pkl")
+    torch.save(rcvae.state_dict(), "./output/rcvae_"+args.dataset+".pkl")
 
 
 
@@ -91,4 +91,4 @@ def generated_generator(args, device, g, category_index, feature_sizes, edge_typ
 
 
 
-    return best_augmented_features,
+    return best_augmented_features
