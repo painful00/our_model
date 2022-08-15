@@ -8,43 +8,29 @@ import torch.nn.functional as F
 import torch.optim as optim
 import rcvae_pretrain
 from utils import load_data, feature_tensor_normalize
+import os
+from conf import Config
 
 from tqdm import trange
 
-exc_path = sys.path[0]
+dataset = "imdb"
+gpu = -1    #   -1:cpu    >0:gpu
+proDir = os.path.split(os.path.realpath(__file__))[0]
+configPath = os.path.join(proDir, "conf.ini")
+conf_path = os.path.abspath(configPath)
+config = Config(file_path=conf_path, model=None, dataset=dataset, gpu=gpu)
 
-parser = argparse.ArgumentParser()
-parser.add_argument("--pretrain_epochs", type=int, default=10)
-parser.add_argument("--batch_size", type=int, default=64)
-parser.add_argument("--latent_size", type=int, default=10)
-parser.add_argument("--pretrain_lr", type=float, default=0.001)
-parser.add_argument('--dataset', default='dblp',
-                    help='Dataset string.')
-parser.add_argument('--seed', type=int, default=42, help='Random seed.')
-parser.add_argument('--epochs', type=int, default=200,
-                    help='Number of epochs to train.')
-parser.add_argument('--lr', type=float, default=0.01,
-                    help='Initial learning rate.')
-parser.add_argument('--weight_decay', type=float, default=5e-4,
-                    help='Weight decay (L2 loss on parameters).')
-parser.add_argument('--dropout', type=float, default=0.5,
-                    help='Dropout rate (1 - keep probability).')
-
-args = parser.parse_args()
-
-torch.manual_seed(args.seed)
+torch.manual_seed(config.seed)
 if torch.cuda.is_available():
-    torch.cuda.manual_seed(args.seed)
-np.random.seed(args.seed)
-random.seed(args.seed)
+    torch.cuda.manual_seed(config.seed)
+np.random.seed(config.seed)
+random.seed(config.seed)
 
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-args.cuda = torch.cuda.is_available()
 
 # Load data
-g, idx_train, idx_val, idx_test, labels, category_index, feature_sizes, edge_types, meta_paths, target_category = load_data(args.dataset)
+g, idx_train, idx_val, idx_test, labels, category_index, feature_sizes, edge_types, meta_paths, target_category = load_data(dataset)
 
 # Pretrain
 best_augmented_features = None
 
-best_augmented_features = rcvae_pretrain.generated_generator(args, device, g, category_index, feature_sizes, edge_types)
+best_augmented_features = rcvae_pretrain.generated_generator(config, config.device, g, category_index, feature_sizes, edge_types, dataset)

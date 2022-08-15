@@ -5,46 +5,35 @@ import torch.nn.functional as F
 
 class VAE(nn.Module):
 
-    def __init__(self, encoder_layer_sizes, latent_size, decoder_layer_sizes, category_index, feature_sizes):
+    def __init__(self, embedding_size, latent_size, category_index, feature_sizes):
         super().__init__()
 
-        assert type(encoder_layer_sizes) == list
         assert type(latent_size) == int
-        assert type(decoder_layer_sizes) == list
+        assert type(embedding_size) == int
         assert type(category_index) == dict
         assert type(feature_sizes) == list
 
         self.latent_size = latent_size
         self.category_index = category_index
         self.feature_sizes = feature_sizes
-        self.conditional_size = encoder_layer_sizes[0]
+        self.look_up_table = []
 
         # category-related map
-        # category-related map
-        self.map_enc = []
         for i, size in enumerate(feature_sizes):
-            self.map_enc.append(nn.Linear(size, encoder_layer_sizes[0]))
+            self.look_up_table.append(nn.Linear(size, embedding_size))
 
-        # category-related map
-        self.map_dec = []
-        for i, size in enumerate(feature_sizes):
-            self.map_dec.append(nn.Linear(decoder_layer_sizes[-1], size))
-
-        self.encoder = Encoder(encoder_layer_sizes, latent_size, category_index)
-        self.decoder = Decoder(decoder_layer_sizes, latent_size, category_index, self.conditional_size)
+        self.encoder = Encoder([embedding_size, latent_size], latent_size, category_index)
+        self.decoder = Decoder([embedding_size, embedding_size], category_index, latent_size)
 
 
     def forward(self, x, c, category):
 
-        x_mapped = self.map_enc[category[0]](x)
-        c_mapped = self.map_enc[category[1]](c)
-        means, log_var = self.encoder(x_mapped, c_mapped)
+        x_emb = self.look_up_table[category[0]](x)
+        c_emb = self.look_up_table[category[1]](c)
+        means, log_var = self.encoder(x_emb, c_emb)
         z = self.reparameterize(means, log_var)
-        recon_x = self.decoder(z, c_mapped)
-        recon_x = self.map_dec[category[0]](recon_x)
-        recon_x = F.sigmoid(recon_x)
-
-        return recon_x, means, log_var, z
+        recon_x = self.decoder(z, c_emb)
+        return recon_x, means, log_var, z, x_emb
 
     def reparameterize(self, means, log_var):
 
@@ -55,10 +44,8 @@ class VAE(nn.Module):
 
     def inference(self, z, c, category):
 
-        c_mapped = self.map_enc[category[1]](c)
-        recon_x = self.decoder(z, c_mapped)
-        recon_x = self.map_dec[category[0]](recon_x)
-        recon_x = F.sigmoid(recon_x)
+        c_emb = self.look_up_table[category[1]](c)
+        recon_x = self.decoder(z, c_emb)
 
         return recon_x
 
@@ -91,15 +78,14 @@ class Encoder(nn.Module):
 
 class Decoder(nn.Module):
 
-    def __init__(self, layer_sizes, latent_size, category_index, conditional_size):
+    def __init__(self, layer_sizes, category_index, latent_size):
 
         super().__init__()
 
         self.MLP = nn.Sequential()
         self.category_index = category_index
-        input_size = latent_size + conditional_size
-
-        for i, (in_size, out_size) in enumerate(zip([input_size]+layer_sizes[:-1], layer_sizes)):
+        layer_sizes[0] = layer_sizes[0] + latent_size
+        for i, (in_size, out_size) in enumerate(zip(layer_sizes[:-1], layer_sizes[1:])):
             self.MLP.add_module(name="L{:d}".format(i), module=nn.Linear(in_size, out_size))
             self.MLP.add_module(name="A{:d}".format(i), module=nn.ReLU())
 
@@ -107,5 +93,6 @@ class Decoder(nn.Module):
 
         z = torch.cat((z, c), dim=-1)
         x = self.MLP(z)
+        rec_x = F.sigmoid(x)
 
-        return x
+        return rec_x

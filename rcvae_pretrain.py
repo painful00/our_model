@@ -20,12 +20,13 @@ def feature_tensor_normalize(feature):
 
 def loss_fn(recon_x, x, mean, log_var):
     BCE = torch.nn.functional.binary_cross_entropy(recon_x, x, reduction='mean')
+    #BCE = torch.nn.CosineEmbeddingLoss(recon_x, x, reduction='mean')
     KLD = -0.5 * torch.sum(1 + log_var - mean.pow(2) - log_var.exp())
 
     return (BCE + KLD) / x.size(0)
 
 
-def generated_generator(args, device, g, category_index, feature_sizes, edge_types):
+def generated_generator(config, device, g, category_index, feature_sizes, edge_types, dataset):
     x_list, c_list, category_list = [], [], []
     # edge_types:{edge_type:[head_node_type,tail_node_type],...}
     for edge in edge_types:
@@ -40,36 +41,35 @@ def generated_generator(args, device, g, category_index, feature_sizes, edge_typ
     for i, edge in enumerate(edge_types):
         rcvae_dataset = TensorDataset(x_list[i], c_list[i])
         rcvae_dataset_sampler = RandomSampler(rcvae_dataset)
-        rcvae_dataset_dataloader = DataLoader(rcvae_dataset, sampler=rcvae_dataset_sampler, batch_size=args.batch_size)
+        rcvae_dataset_dataloader = DataLoader(rcvae_dataset, sampler=rcvae_dataset_sampler, batch_size=config.arg_batch_size)
         rcvae_dataset_dataloaders.append(rcvae_dataset_dataloader)
 
     gc.collect()
 
     # Pretrain
-    rcvae = VAE(encoder_layer_sizes=[256],
-               latent_size=args.latent_size,
-               decoder_layer_sizes=[256],
+    rcvae = VAE(embedding_size=config.embedding_size,
+               latent_size=config.arg_latent_size,
                category_index=category_index,
                feature_sizes=feature_sizes)
-    rcvae_optimizer = optim.Adam(rcvae.parameters(), lr=args.pretrain_lr)
+    rcvae_optimizer = optim.Adam(rcvae.parameters(), lr=config.arg_pretrain_lr)
 
-    if args.cuda:
-        rcvae.to(device)
+    if torch.cuda.is_available():
+        rcvae.to(config.device)
 
     # Pretrain
     best_augmented_features = None
     rcvae_model = None
-    for epoch in trange(args.pretrain_epochs, desc='Run CVAE Train'):
+    for epoch in trange(config.arg_pretrain_epochs, desc='Run CVAE Train'):
         print("************",epoch,"*************")
         for i in trange(len(rcvae_dataset_dataloaders), desc='Run Edges'):
             rcvae_dataset_dataloader = rcvae_dataset_dataloaders[i]
             category = category_list[i]
             for _, (x, c) in enumerate(tqdm(rcvae_dataset_dataloader)):
                 rcvae.train()
-                if args.cuda:
+                if torch.cuda.is_available():
                     x, c = x.to(device), c.to(device)
 
-                recon_x, mean, log_var, _ = rcvae(x, c, [category_index[category[0]], category_index[category[1]]])
+                recon_x, mean, log_var, _, x = rcvae(x, c, [category_index[category[0]], category_index[category[1]]])
                 rcvae_loss = loss_fn(recon_x, x, mean, log_var)
                 rcvae_optimizer.zero_grad()
                 rcvae_loss.backward()
@@ -77,7 +77,7 @@ def generated_generator(args, device, g, category_index, feature_sizes, edge_typ
 
             print("loss: ", rcvae_loss)
 
-    torch.save(rcvae.state_dict(), "./output/rcvae_"+args.dataset+".pkl")
+    torch.save(rcvae.state_dict(), "./output/rcvae_"+ dataset+".pkl")
 
 
 

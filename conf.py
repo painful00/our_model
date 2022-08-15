@@ -41,10 +41,13 @@ class Config(object):
             self.mini_batch_flag = conf.getboolean("HAN", "mini_batch_flag")
 
         # augmentation generator
-        self.arg_encoder_layer_sizes = eval(conf.get('Augmentation', 'encoder_layer_sizes'))
+        self.embedding_size = conf.getint('Augmentation', 'embedding_size')
         self.arg_latent_size = conf.getint('Augmentation', 'latent_size')
-        self.arg_decoder_layer_sizes = eval(conf.get('Augmentation', 'decoder_layer_sizes'))
         self.arg_argmentation_type = eval(conf.get('Augmentation', 'argmentation_type'))
         self.arg_argmentation_num = conf.getint('Augmentation', 'argmentation_num')
         self.is_augmentation = conf.getboolean('Augmentation', 'is_augmentation')
+        self.arg_pretrain_lr = conf.getfloat('Augmentation', 'pretrain_lr')
+        self.arg_pretrain_epochs = conf.getint('Augmentation', 'pretrain_epochs')
+        self.arg_batch_size = conf.getint('Augmentation', 'batch_size')
+
 

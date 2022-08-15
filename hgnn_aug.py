@@ -43,8 +43,7 @@ target_feature_size = g.ndata["h"][target_category].size()[1]
 # augmentation generator
 path = "./output/rcvae_"+dataset+".pkl"
 if os.path.exists(path):
-    augmentation_generator = VAE(config.arg_encoder_layer_sizes, config.arg_latent_size, config.arg_decoder_layer_sizes,
-                                 category_index, feature_sizes)
+    augmentation_generator = VAE(config.embedding_size, config.arg_latent_size, category_index, feature_sizes)
     augmentation_generator.load_state_dict(torch.load(path))
 else:
     augmentation_generator = VAE(config.arg_encoder_layer_sizes, config.arg_latent_size, config.arg_decoder_layer_sizes,
@@ -62,10 +61,11 @@ if config.is_augmentation:
             temp_features = augmentation_generator.inference(z, g.ndata["h"][target_category], aug_category).detach()
             augmented_features[aug_type].append(temp_features)
 
+
 # model
-mapping_size = 256
+mapping_size = 128
 if config.is_augmentation:
-    model = HAN_AUG(meta_paths, target_category, config.hidden_dim, label_num, config.num_heads, config.dropout, feature_sizes, mapping_size, category_index, config.arg_argmentation_type)
+    model = HAN_AUG(config, meta_paths, target_category, config.hidden_dim, label_num, config.num_heads, config.dropout, feature_sizes, mapping_size, category_index, config.arg_argmentation_type, config.arg_argmentation_num)
 else:
     model = HAN(meta_paths, [target_category], target_feature_size, config.hidden_dim, label_num, config.num_heads, config.dropout)
 optimizer = torch.optim.AdamW(model.parameters(), lr=config.lr, weight_decay=config.weight_decay)
@@ -104,6 +104,11 @@ for epoch in range(config.max_epoch):
     print('Epoch {:d} | Train Loss {:.4f} | Train Micro f1 {:.4f} | Train Macro f1 {:.4f} | '
           'Val Loss {:.4f} | Val Micro f1 {:.4f} | Val Macro f1 {:.4f}'.format(
         epoch + 1, loss.item(), train_micro_f1, train_macro_f1, val_loss.item(), val_micro_f1, val_macro_f1))
+
+    test_loss = F.cross_entropy(logits[idx_test], labels[idx_test])
+    test_acc, test_micro_f1, test_macro_f1 = score(logits[idx_test], labels[idx_test])
+    print('Test loss {:.4f} | Test Micro f1 {:.4f} | Test Macro f1 {:.4f}'.format(test_loss.item(), test_micro_f1,
+                                                                                  test_macro_f1))
 
     if early_stop:
         break
