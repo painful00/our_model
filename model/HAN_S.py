@@ -25,8 +25,7 @@ class HAN_AUG(nn.Module):
         super().__init__()
 
         self.model = HAN(meta_paths, [target_category], feature_sizes[category_index[target_category]], hidden_dim, label_num, num_heads, dropout)
-        self.model1 = HAN(meta_paths, [target_category],mapping_size,hidden_dim, label_num, num_heads, dropout)
-        self.model2 = HAN(meta_paths, [target_category],mapping_size,hidden_dim, label_num, num_heads, dropout)
+        self.model1 = HAN(meta_paths, [target_category], arg_argmentation_num * mapping_size,hidden_dim, label_num, num_heads, dropout)
 
         # create category-related mapping
         self.map_cate = []
@@ -62,7 +61,6 @@ class HAN_AUG(nn.Module):
         # deep copy
         g = copy.deepcopy(g_ori)
         g1 = copy.deepcopy(g_ori)
-        g2 = copy.deepcopy(g_ori)
 
         #g.nodes[self.target_category].data["h"] = self.map_cate[self.category_index[self.target_category]](g.ndata["h"][self.target_category])
 
@@ -77,14 +75,12 @@ class HAN_AUG(nn.Module):
         # # g.nodes[self.target_category].data["h"] = g.nodes[self.target_category].data["h"] / (len(augmentated_types)+1)
 
         # sep
-        g1.nodes[self.target_category].data["h"] = dealed_augmentated_features["D"]
-        g2.nodes[self.target_category].data["h"] = dealed_augmentated_features["A"]
+        g1.nodes[self.target_category].data["h"] = torch.cat((dealed_augmentated_features["D"],dealed_augmentated_features["A"]), dim=-1)
 
         logits1 = self.model1(g1, g1.ndata["h"])[self.target_category]
-        logits2 = self.model2(g2, g2.ndata["h"])[self.target_category]
 
         logits = self.model(g, g.ndata["h"])[self.target_category]
 
-        logits = F.sigmoid(logits + logits1 + logits2)
+        logits = F.sigmoid(logits + logits1)
 
         return logits
