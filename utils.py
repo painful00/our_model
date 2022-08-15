@@ -15,8 +15,8 @@ def load_data(dataset_str):
     if dataset_str == "acm":
         labels = g.ndata['label']['paper'].to(torch.long)
         idx_train = g.ndata['train_mask']['paper'].squeeze()
-        idx_test = g.ndata['test_mask']['paper']
-        idx_val = g.ndata['val_mask']['paper']
+        idx_test = g.ndata['test_mask']['paper'].squeeze()
+        idx_val = g.ndata['val_mask']['paper'].squeeze()
         for e in g.etypes:
             e1 = e.split('_')[0]
             e2 = e.split('_')[1]

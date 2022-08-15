@@ -15,11 +15,12 @@ import dgl
 from utils import load_data, score, EarlyStopping
 from openhgnn import HAN
 from rcvae_model import VAE
+from model.HAN import HAN_AUG
 
 
 # conf setting
 model = "HAN"
-dataset = "acm"
+dataset = "imdb"
 gpu = -1    #   -1:cpu    >0:gpu
 proDir = os.path.split(os.path.realpath(__file__))[0]
 configPath = os.path.join(proDir, "conf.ini")
@@ -52,22 +53,19 @@ else:
 
 # Structure Augmentation
 if config.is_augmentation:
-    augmented_features = None
+    augmented_features = {}
     for aug_type in config.arg_argmentation_type:
+        augmented_features[aug_type] = []
         aug_category = [category_index[aug_type], category_index[target_category]]
         for _ in range(config.arg_argmentation_num):
             z = torch.randn([g.ndata["h"][target_category].size()[0], config.arg_latent_size])
             temp_features = augmentation_generator.inference(z, g.ndata["h"][target_category], aug_category).detach()
-            if augmented_features is not None:
-                augmented_features = torch.cat((augmented_features, temp_features), dim=-1)
-            else:
-                augmented_features = temp_features
-    g.nodes[target_category].data["h"] = feature_tensor_normalize(torch.cat((g.ndata["h"][target_category], augmented_features), dim=-1))
-    #g.nodes[target_category].data["h"] = torch.cat((g.ndata["h"][target_category], augmented_features), dim=-1)
+            augmented_features[aug_type].append(temp_features)
 
 # model
+mapping_size = 256
 if config.is_augmentation:
-    model = HAN(meta_paths, [target_category], target_feature_size+augmented_features.size()[1], config.hidden_dim, label_num, config.num_heads, config.dropout)
+    model = HAN_AUG(meta_paths, target_category, config.hidden_dim, label_num, config.num_heads, config.dropout, feature_sizes, mapping_size, category_index, config.arg_argmentation_type)
 else:
     model = HAN(meta_paths, [target_category], target_feature_size, config.hidden_dim, label_num, config.num_heads, config.dropout)
 optimizer = torch.optim.AdamW(model.parameters(), lr=config.lr, weight_decay=config.weight_decay)
@@ -82,9 +80,10 @@ if gpu >= 0:
 
 
 # train
+method = "mean"
 for epoch in range(config.max_epoch):
     model.train()
-    logits = model(g, g.ndata["h"])[target_category]
+    logits = model(g, augmented_features, config.arg_argmentation_type, config.arg_argmentation_num, method)
     loss = F.cross_entropy(logits[idx_train], labels[idx_train])
 
     optimizer.zero_grad()
@@ -96,7 +95,7 @@ for epoch in range(config.max_epoch):
     # evaluation
     model.eval()
     with torch.no_grad():
-        logits = model(g, g.ndata["h"])[target_category]
+        logits = model(g, augmented_features, config.arg_argmentation_type, config.arg_argmentation_num, method)
     val_loss = F.cross_entropy(logits[idx_val], labels[idx_val])
     val_acc, val_micro_f1, val_macro_f1 = score(logits[idx_val], labels[idx_val])
 
@@ -112,7 +111,7 @@ for epoch in range(config.max_epoch):
 stopper.load_checkpoint(model)
 model.eval()
 with torch.no_grad():
-    logits = model(g, g.ndata["h"])[target_category]
+    logits = model(g, augmented_features, config.arg_argmentation_type, config.arg_argmentation_num, method)
 test_loss = F.cross_entropy(logits[idx_test], labels[idx_test])
 test_acc, test_micro_f1, test_macro_f1 = score(logits[idx_test], labels[idx_test])
 print('Test loss {:.4f} | Test Micro f1 {:.4f} | Test Macro f1 {:.4f}'.format(test_loss.item(), test_micro_f1, test_macro_f1))
