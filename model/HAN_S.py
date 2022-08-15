@@ -25,7 +25,7 @@ class HAN_AUG(nn.Module):
         super().__init__()
 
         self.model = HAN(meta_paths, [target_category], feature_sizes[category_index[target_category]], hidden_dim, label_num, num_heads, dropout)
-        self.model1 = HAN(meta_paths, [target_category], arg_argmentation_num * mapping_size,hidden_dim, label_num, num_heads, dropout)
+        self.model1 = HAN(meta_paths, [target_category], len(augmentated_types) * mapping_size,hidden_dim, label_num, num_heads, dropout)
 
         # create category-related mapping
         self.map_cate = []
@@ -81,6 +81,6 @@ class HAN_AUG(nn.Module):
 
         logits = self.model(g, g.ndata["h"])[self.target_category]
 
-        logits = F.sigmoid(logits + logits1)
+        logits = F.sigmoid(logits + 0.1*logits1)
 
         return logits
