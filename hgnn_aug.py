@@ -63,7 +63,7 @@ if config.is_augmentation:
 
 
 # model
-mapping_size = 128
+mapping_size = 256
 if config.is_augmentation:
     model = HAN_AUG(config, meta_paths, target_category, config.hidden_dim, label_num, config.num_heads, config.dropout, feature_sizes, mapping_size, category_index, config.arg_argmentation_type, config.arg_argmentation_num)
 else:
