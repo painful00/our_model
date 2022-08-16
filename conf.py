@@ -31,7 +31,6 @@ class Config(object):
             self.weight_decay = conf.getfloat("HAN", "weight_decay")
             self.seed = conf.getint("HAN", "seed")
             self.dropout = conf.getfloat("HAN", "dropout")
-
             self.hidden_dim = conf.getint('HAN', 'hidden_dim')
             self.out_dim = conf.getint('HAN', 'out_dim')
             num_heads = conf.get('HAN', 'num_heads').split('-')
@@ -41,6 +40,7 @@ class Config(object):
             self.mini_batch_flag = conf.getboolean("HAN", "mini_batch_flag")
 
         # augmentation generator
+        # structure
         self.embedding_size = conf.getint('Augmentation', 'embedding_size')
         self.arg_latent_size = conf.getint('Augmentation', 'latent_size')
         self.arg_argmentation_type = eval(conf.get('Augmentation', 'argmentation_type'))
@@ -49,5 +49,21 @@ class Config(object):
         self.arg_pretrain_lr = conf.getfloat('Augmentation', 'pretrain_lr')
         self.arg_pretrain_epochs = conf.getint('Augmentation', 'pretrain_epochs')
         self.arg_batch_size = conf.getint('Augmentation', 'batch_size')
+
+        # path
+        self.resolution = conf.getint('Augmentation', 'resolution')
+        self.threshold_sba = conf.getfloat('Augmentation', 'threshold_sba')
+        self.threshold_usvt = conf.getfloat('Augmentation', 'threshold_usvt')
+        self.alpha = conf.getfloat('Augmentation', 'alpha')
+        self.beta = conf.getfloat('Augmentation', 'beta')
+        self.gamma = conf.getfloat('Augmentation', 'gamma')
+        self.inner_iters = conf.getint('Augmentation', 'inner_iters')
+        self.outer_iters = conf.getint('Augmentation', 'outer_iters')
+        self.n_trials = conf.getint('Augmentation', 'n_trials')
+        self.argmentation_path = eval(conf.get('Augmentation', 'argmentation_path'))
+        self.argmentation_graph_num = conf.getint('Augmentation', 'argmentation_graph_num')
+
+
+
 
 

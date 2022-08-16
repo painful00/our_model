@@ -87,7 +87,7 @@ class Decoder(nn.Module):
         layer_sizes[0] = layer_sizes[0] + latent_size
         for i, (in_size, out_size) in enumerate(zip(layer_sizes[:-1], layer_sizes[1:])):
             self.MLP.add_module(name="L{:d}".format(i), module=nn.Linear(in_size, out_size))
-            self.MLP.add_module(name="A{:d}".format(i), module=nn.ReLU())
+            #self.MLP.add_module(name="A{:d}".format(i), module=nn.ReLU())
 
     def forward(self, z, c):
 

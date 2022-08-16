@@ -21,7 +21,7 @@ def load_data(dataset_str):
             e1 = e.split('_')[0]
             e2 = e.split('_')[1]
             edge_types[e] = [e1,e2]
-        meta_paths = {"PA":['paper_author', 'author_paper'], "PSP":['paper_subject', 'subject_paper']}
+        meta_paths = {"PAP":['paper_author', 'author_paper'], "PSP":['paper_subject', 'subject_paper']}
         target_category = "paper"
         labels = labels.squeeze()
 
