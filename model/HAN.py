@@ -29,6 +29,7 @@ class HAN_AUG(nn.Module):
                          config.embedding_size * (len(augmentated_types)) + feature_sizes[category_index[target_category]],
                          hidden_dim, label_num, num_heads, dropout)
 
+
         # create category-related mapping
         # self.map_cate = []
         # for i, size in enumerate(feature_sizes):
