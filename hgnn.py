@@ -19,7 +19,7 @@ from rcvae_model import VAE
 
 # conf setting
 model = "HAN"
-dataset = "imdb"
+dataset = "yelp"
 gpu = -1    #   -1:cpu    >0:gpu
 proDir = os.path.split(os.path.realpath(__file__))[0]
 configPath = os.path.join(proDir, "conf.ini")
@@ -39,37 +39,8 @@ g, idx_train, idx_val, idx_test, labels, category_index, feature_sizes, edge_typ
 label_num = int(labels.max()+1)
 target_feature_size = g.ndata["h"][target_category].size()[1]
 
-# augmentation generator
-path = "./output/rcvae_"+dataset+".pkl"
-if os.path.exists(path):
-    augmentation_generator = VAE(config.arg_encoder_layer_sizes, config.arg_latent_size, config.arg_decoder_layer_sizes,
-                                 category_index, feature_sizes)
-    augmentation_generator.load_state_dict(torch.load(path))
-else:
-    augmentation_generator = VAE(config.arg_encoder_layer_sizes, config.arg_latent_size, config.arg_decoder_layer_sizes,
-                                 category_index, feature_sizes)
-    print("Augmentation generator is not trained")
 
-# Structure Augmentation
-if config.is_augmentation:
-    augmented_features = None
-    for aug_type in config.arg_argmentation_type:
-        aug_category = [category_index[aug_type], category_index[target_category]]
-        for _ in range(config.arg_argmentation_num):
-            z = torch.randn([g.ndata["h"][target_category].size()[0], config.arg_latent_size])
-            temp_features = augmentation_generator.inference(z, g.ndata["h"][target_category], aug_category).detach()
-            if augmented_features is not None:
-                augmented_features = torch.cat((augmented_features, temp_features), dim=-1)
-            else:
-                augmented_features = temp_features
-    g.nodes[target_category].data["h"] = feature_tensor_normalize(torch.cat((g.ndata["h"][target_category], augmented_features), dim=-1))
-    #g.nodes[target_category].data["h"] = torch.cat((g.ndata["h"][target_category], augmented_features), dim=-1)
-
-# model
-if config.is_augmentation:
-    model = HAN(meta_paths, [target_category], target_feature_size+augmented_features.size()[1], config.hidden_dim, label_num, config.num_heads, config.dropout)
-else:
-    model = HAN(meta_paths, [target_category], target_feature_size, config.hidden_dim, label_num, config.num_heads, config.dropout)
+model = HAN(meta_paths, [target_category], target_feature_size, config.hidden_dim, label_num, config.num_heads, config.dropout)
 optimizer = torch.optim.AdamW(model.parameters(), lr=config.lr, weight_decay=config.weight_decay)
 stopper = EarlyStopping(patience=config.patience)
 if gpu >= 0:

@@ -51,6 +51,19 @@ def load_data(dataset_str):
         target_category = "M"
         labels = labels.squeeze()
 
+    elif dataset_str == "yelp":
+        labels = g.ndata['labels']['b'].to(torch.long)
+        idx_train = g.ndata['train_mask']['b']
+        idx_test = g.ndata['test_mask']['b']
+        idx_val = g.ndata['val_mask']['b']
+        for e in g.etypes:
+            e1 = e.split('-')[0]
+            e2 = e.split('-')[1]
+            edge_types[e] = [e1,e2]
+        meta_paths = {"BSB":['b-s', 's-b'], "BUB":['b-u', 'u-b'], "BUBLB":['b-u', 'u-b', 'b-l', 'l-b'], "BUBSB":['b-u', 'u-b', 'b-s', 's-b']}
+        target_category = "b"
+        labels = labels.squeeze()
+
     idx_train = torch.nonzero(idx_train).squeeze()
     idx_test = torch.nonzero(idx_test).squeeze()
     idx_val = torch.nonzero(idx_val).squeeze()
