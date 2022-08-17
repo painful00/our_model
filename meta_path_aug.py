@@ -11,7 +11,7 @@ from utils import load_data, feature_tensor_normalize, score, EarlyStopping
 import os
 from conf import Config
 from path_aug_model import Path_Augmentation
-import json
+import itertools
 from tqdm import trange
 from scipy import sparse
 import dgl
@@ -19,7 +19,7 @@ from model.HAN_P import HAN_AUG
 from openhgnn import HAN
 
 model = "HAN"
-dataset = "acm"
+dataset = "imdb"
 gpu = -1    #   -1:cpu    >0:gpu
 proDir = os.path.split(os.path.realpath(__file__))[0]
 configPath = os.path.join(proDir, "conf.ini")
@@ -42,8 +42,6 @@ target_feature_size = g.ndata["h"][target_category].size()[1]
 method = "SGWB"    # ['SBA', 'SAS', 'LG', 'MC', 'USVT', 'GWB', 'SGWB', 'FGWB', 'SFGWB']
 path_augmentation = Path_Augmentation(g, meta_paths, method, config)
 
-augmentated_graphs = []
-
 # graphon estimator
 graphons = {}
 node_num = g.ndata["h"][target_category].size()[0]
@@ -55,9 +53,21 @@ for path in config.argmentation_path:
         data = np.load("./output/" + path + ".npz")
         graphons[path] = data['graphon']
 
-# graph generation
+
+augmentated_graphs = []
+# intra-path augmentation
 for path in config.argmentation_path:
-    augmentated_graphs = augmentated_graphs + path_augmentation.generate_graph(node_num, path, graphons[path])
+    augmentated_graphs = augmentated_graphs + path_augmentation.generate_graph(node_num, config.argmentation_intra_graph_num, graphons[path])
+
+# inter-path augmentation
+arg_W = []
+combinations = list(itertools.combinations(list(meta_paths.keys()),2))
+for com1, com2 in combinations:
+    new_graphon = (graphons[com1]+graphons[com2])/2
+    arg_W.append(new_graphon)
+    augmentated_graphs = augmentated_graphs + path_augmentation.generate_graph(node_num, config.argmentation_inter_graph_num, new_graphon)
+
+
 
 # augmentation
 hetero_dic = {}
@@ -70,12 +80,24 @@ new_g = dgl.heterograph(hetero_dic)
 new_g.nodes[target_category].data["h"] = g.ndata["h"][target_category]
 
 
+
+# augmentation
+hetero_dic = {}
+for edge in edge_types:
+    hetero_dic[(edge_types[edge][0], edge, edge_types[edge][1])] = g[edge].edges()
+for ind, item in enumerate(augmentated_graphs):
+    adj_mat = sparse.coo_matrix(item)
+    hetero_dic[(target_category,"Inter_AUG_"+str(ind),target_category)] = (adj_mat.row, adj_mat.col)
+new_g = dgl.heterograph(hetero_dic)
+new_g.nodes[target_category].data["h"] = g.ndata["h"][target_category]
+
+
 # model
 mapping_size = 256
 if config.is_augmentation:
     #meta_paths = {}
     for ind, item in enumerate(augmentated_graphs):
-        meta_paths["AUG_"+str(ind)] = ["AUG_"+str(ind)]
+        meta_paths["Inter_AUG_"+str(ind)] = ["Inter_AUG_"+str(ind)]
     model = HAN_AUG(config, meta_paths, target_category, config.hidden_dim, label_num, config.num_heads, config.dropout, feature_sizes, mapping_size, category_index, config.arg_argmentation_type, config.arg_argmentation_num)
 else:
     model = HAN(meta_paths, [target_category], target_feature_size, config.hidden_dim, label_num, config.num_heads, config.dropout)

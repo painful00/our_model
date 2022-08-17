@@ -34,7 +34,7 @@ def load_data(dataset_str):
             e1 = e.split('-')[0]
             e2 = e.split('-')[1]
             edge_types[e] = [e1,e2]
-        meta_paths = {"PAP":['A-P', 'P-A'], "APTPA":['A-P', 'P-T', 'T-P', 'P-A'], "APVPA":['A-P', 'P-V', 'V-P', 'P-A']}
+        meta_paths = {"APA":['A-P', 'P-A'], "APTPA":['A-P', 'P-T', 'T-P', 'P-A'], "APVPA":['A-P', 'P-V', 'V-P', 'P-A']}
         target_category = "A"
         labels = labels.squeeze()
 

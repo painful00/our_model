@@ -40,8 +40,7 @@ class Path_Augmentation:
 
         return graphon
 
-    def generate_graph(self, node_num, path, graphon):
-        num_graphs = self.config.argmentation_graph_num
+    def generate_graph(self, node_num, num_graphs, graphon):
         num_nodes = node_num
 
         generated_graphs = simulator.simulate_graphs(graphon, num_graphs=num_graphs, num_nodes=num_nodes, graph_size="fixed")

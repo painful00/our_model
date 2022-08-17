@@ -61,7 +61,8 @@ class Config(object):
         self.outer_iters = conf.getint('Augmentation', 'outer_iters')
         self.n_trials = conf.getint('Augmentation', 'n_trials')
         self.argmentation_path = eval(conf.get('Augmentation', 'argmentation_path'))
-        self.argmentation_graph_num = conf.getint('Augmentation', 'argmentation_graph_num')
+        self.argmentation_intra_graph_num = conf.getint('Augmentation', 'argmentation_intra_graph_num')
+        self.argmentation_inter_graph_num = conf.getint('Augmentation', 'argmentation_inter_graph_num')
 
 
 
