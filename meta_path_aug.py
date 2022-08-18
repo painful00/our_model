@@ -61,7 +61,7 @@ for path in config.argmentation_path:
 
 # inter-path augmentation
 arg_W = []
-combinations = list(itertools.combinations(list(meta_paths.keys()),2))
+combinations = list(itertools.combinations(config.argmentation_path,2))
 for com1, com2 in combinations:
     new_graphon = (graphons[com1]+graphons[com2])/2
     arg_W.append(new_graphon)

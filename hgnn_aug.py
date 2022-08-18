@@ -22,7 +22,7 @@ from model.MAGNN import MAGNN_AUG
 
 # conf setting
 model_type = "MAGNN"
-dataset = "imdb"
+dataset = "acm"
 gpu = -1    #   -1:cpu    >0:gpu
 proDir = os.path.split(os.path.realpath(__file__))[0]
 configPath = os.path.join(proDir, "conf.ini")
@@ -49,6 +49,22 @@ if dataset == "yelp":
     config.embedding_size = feature_sizes[0]
 else:
     has_feature = False
+if dataset == "acm":
+    G = dgl.heterograph({
+            ('author', 'author-paper', 'paper'): g['author_paper'].edges(),
+            ('paper', 'paper-author', 'author'): g["paper_author"].edges(),
+            ('paper', 'paper-subject', 'subject'): g["paper_subject"].edges(),
+            ('subject', 'subject-paper', 'paper'): g["subject_paper"].edges()
+        })
+    G.nodes["paper"].data['label'] = g.ndata["label"]["paper"]
+    G.nodes["paper"].data['train_mask'] = g.ndata["train_mask"]["paper"]
+    G.nodes["paper"].data['val_mask'] = g.ndata["val_mask"]["paper"]
+    G.nodes["paper"].data['test_mask'] = g.ndata["test_mask"]["paper"]
+    G.nodes["paper"].data['h'] = g.ndata["h"]["paper"]
+    G.nodes["author"].data['h'] = g.ndata["h"]["author"]
+    G.nodes["subject"].data['h'] = g.ndata["h"]["subject"]
+    g = G
+
 
 # augmentation generator
 path = "./output/rcvae_"+dataset+".pkl"
