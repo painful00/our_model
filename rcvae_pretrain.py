@@ -35,7 +35,7 @@ def generated_generator(config, device, g, category_index, feature_sizes, edge_t
         x_id_list, c_id_list = g[edge].edges()
         x_list.append(g.ndata["h"][x_type][x_id_list])
         c_list.append(g.ndata["h"][c_type][c_id_list])
-        category_list.append([x_type, c_type])
+        category_list.append([x_type, c_type, edge])
 
     rcvae_dataset_dataloaders = []
     for i, edge in enumerate(edge_types):
@@ -45,12 +45,21 @@ def generated_generator(config, device, g, category_index, feature_sizes, edge_t
         rcvae_dataset_dataloaders.append(rcvae_dataset_dataloader)
 
     gc.collect()
+    e_type_index = {}
+    for ind,e in enumerate(g.etypes):
+        e_type_index[e] = ind
+    if dataset == "yelp":
+        has_feature = True
+    else:
+        has_feature = False
 
     # Pretrain
     rcvae = VAE(embedding_size=config.embedding_size,
                latent_size=config.arg_latent_size,
                category_index=category_index,
-               feature_sizes=feature_sizes)
+               feature_sizes=feature_sizes,
+               edge_type_index=e_type_index,
+               has_feature=has_feature)
     rcvae_optimizer = optim.Adam(rcvae.parameters(), lr=config.arg_pretrain_lr)
 
     if torch.cuda.is_available():
@@ -58,7 +67,6 @@ def generated_generator(config, device, g, category_index, feature_sizes, edge_t
 
     # Pretrain
     best_augmented_features = None
-    rcvae_model = None
     for epoch in trange(config.arg_pretrain_epochs, desc='Run CVAE Train'):
         print("************",epoch,"*************")
         for i in trange(len(rcvae_dataset_dataloaders), desc='Run Edges'):
@@ -69,7 +77,7 @@ def generated_generator(config, device, g, category_index, feature_sizes, edge_t
                 if torch.cuda.is_available():
                     x, c = x.to(device), c.to(device)
 
-                recon_x, mean, log_var, _, x = rcvae(x, c, [category_index[category[0]], category_index[category[1]]])
+                recon_x, mean, log_var, _, x = rcvae(x, c, [category_index[category[0]], category_index[category[1]]], category[2])
                 rcvae_loss = loss_fn(recon_x, x, mean, log_var)
                 rcvae_optimizer.zero_grad()
                 rcvae_loss.backward()

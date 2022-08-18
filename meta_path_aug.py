@@ -19,7 +19,7 @@ from model.HAN_P import HAN_AUG
 from openhgnn import HAN
 
 model = "HAN"
-dataset = "imdb"
+dataset = "yelp"
 gpu = -1    #   -1:cpu    >0:gpu
 proDir = os.path.split(os.path.realpath(__file__))[0]
 configPath = os.path.join(proDir, "conf.ini")

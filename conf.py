@@ -39,6 +39,23 @@ class Config(object):
             self.max_epoch = conf.getint('HAN', 'max_epoch')
             self.mini_batch_flag = conf.getboolean("HAN", "mini_batch_flag")
 
+        if self.model == 'MAGNN':
+            self.lr = conf.getfloat("MAGNN", "learning_rate")
+            self.weight_decay = conf.getfloat("MAGNN", "weight_decay")
+            self.seed = conf.getint("MAGNN", "seed")
+            self.dropout = conf.getfloat("MAGNN", "dropout")
+            self.hidden_dim = conf.getint('MAGNN', 'h_dim')
+            self.out_dim = conf.getint('MAGNN', 'out_dim')
+            self.inter_attn_feats = conf.getint('MAGNN', 'inter_attn_feats')
+            self.num_heads = conf.getint('MAGNN', 'num_heads')
+            self.patience = conf.getint('MAGNN', 'patience')
+            self.max_epoch = conf.getint('MAGNN', 'max_epoch')
+            self.mini_batch_flag = conf.getboolean("HAN", "mini_batch_flag")
+            self.num_layers = conf.getint('MAGNN', 'num_layers')
+            self.batch_size = conf.getint('MAGNN', 'batch_size')
+            self.num_samples = conf.getint('MAGNN', 'num_samples')
+            self.encoder_type = conf.get('MAGNN', 'encoder_type')
+
         # augmentation generator
         # structure
         self.embedding_size = conf.getint('Augmentation', 'embedding_size')

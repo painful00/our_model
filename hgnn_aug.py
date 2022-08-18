@@ -13,19 +13,21 @@ from tqdm import trange
 from conf import Config
 import dgl
 from utils import load_data, score, EarlyStopping
-from openhgnn import HAN
+from openhgnn import HAN, MAGNN
+from openhgnn.models.MAGNN import mp_instance_sampler
 from rcvae_model import VAE
 from model.HAN import HAN_AUG
+from model.MAGNN import MAGNN_AUG
 
 
 # conf setting
-model = "HAN"
+model_type = "MAGNN"
 dataset = "imdb"
 gpu = -1    #   -1:cpu    >0:gpu
 proDir = os.path.split(os.path.realpath(__file__))[0]
 configPath = os.path.join(proDir, "conf.ini")
 conf_path = os.path.abspath(configPath)
-config = Config(file_path=conf_path, model=model, dataset=dataset, gpu=gpu)
+config = Config(file_path=conf_path, model=model_type, dataset=dataset, gpu=gpu)
 
 
 # set random seed
@@ -39,15 +41,22 @@ dgl.seed(config.seed)
 g, idx_train, idx_val, idx_test, labels, category_index, feature_sizes, edge_types, meta_paths, target_category = load_data(dataset)
 label_num = int(labels.max()+1)
 target_feature_size = g.ndata["h"][target_category].size()[1]
+e_type_index = {}
+for ind,e in enumerate(g.etypes):
+    e_type_index[e] = ind
+if dataset == "yelp":
+    has_feature = True
+    config.embedding_size = feature_sizes[0]
+else:
+    has_feature = False
 
 # augmentation generator
 path = "./output/rcvae_"+dataset+".pkl"
 if os.path.exists(path):
-    augmentation_generator = VAE(config.embedding_size, config.arg_latent_size, category_index, feature_sizes)
+    augmentation_generator = VAE(config.embedding_size, config.arg_latent_size, category_index, feature_sizes, e_type_index, has_feature)
     augmentation_generator.load_state_dict(torch.load(path))
 else:
-    augmentation_generator = VAE(config.arg_encoder_layer_sizes, config.arg_latent_size, config.arg_decoder_layer_sizes,
-                                 category_index, feature_sizes)
+    augmentation_generator = VAE(config.embedding_size, config.arg_latent_size, category_index, feature_sizes, e_type_index, has_feature)
     print("Augmentation generator is not trained")
 
 # Structure Augmentation
@@ -56,17 +65,26 @@ if config.is_augmentation:
     for aug_type in config.arg_argmentation_type:
         augmented_features[aug_type] = []
         aug_category = [category_index[aug_type], category_index[target_category]]
+        edge_t = None
+        for e in edge_types:
+            if edge_types[e] == [aug_type, target_category]:
+                edge_t = e
+                break
         for _ in range(config.arg_argmentation_num):
             z = torch.randn([g.ndata["h"][target_category].size()[0], config.arg_latent_size])
-            temp_features = augmentation_generator.inference(z, g.ndata["h"][target_category], aug_category).detach()
+            temp_features = augmentation_generator.inference(z, g.ndata["h"][target_category], aug_category, edge_t).detach()
             augmented_features[aug_type].append(temp_features)
 
 # model
-mapping_size = 256
-if config.is_augmentation:
-    model = HAN_AUG(config, meta_paths, target_category, config.hidden_dim, label_num, config.num_heads, config.dropout, feature_sizes, mapping_size, category_index, config.arg_argmentation_type, config.arg_argmentation_num)
-else:
-    model = HAN(meta_paths, [target_category], target_feature_size, config.hidden_dim, label_num, config.num_heads, config.dropout)
+if model_type == "HAN":
+    mapping_size = 256
+    if config.is_augmentation:
+        model = HAN_AUG(config, meta_paths, target_category, config.hidden_dim, label_num, config.num_heads, config.dropout, feature_sizes, mapping_size, category_index, config.arg_argmentation_type, config.arg_argmentation_num)
+    else:
+        model = HAN(meta_paths, [target_category], target_feature_size, config.hidden_dim, label_num, config.num_heads, config.dropout)
+elif model_type == "MAGNN":
+    model = MAGNN_AUG(config, label_num, g, dataset, target_category, feature_sizes, category_index)
+
 optimizer = torch.optim.AdamW(model.parameters(), lr=config.lr, weight_decay=config.weight_decay)
 stopper = EarlyStopping(patience=config.patience)
 if gpu >= 0:
@@ -82,7 +100,10 @@ if gpu >= 0:
 method = "mean"
 for epoch in range(config.max_epoch):
     model.train()
-    logits = model(g, augmented_features, config.arg_argmentation_type, config.arg_argmentation_num, method)
+    if model_type == "HAN":
+        logits = model(g, augmented_features, config.arg_argmentation_type, config.arg_argmentation_num, method)
+    elif model_type == "MAGNN":
+        logits = model(g)
     loss = F.cross_entropy(logits[idx_train], labels[idx_train])
 
     optimizer.zero_grad()
@@ -94,7 +115,10 @@ for epoch in range(config.max_epoch):
     # evaluation
     model.eval()
     with torch.no_grad():
-        logits = model(g, augmented_features, config.arg_argmentation_type, config.arg_argmentation_num, method)
+        if model_type == "HAN":
+            logits = model(g, augmented_features, config.arg_argmentation_type, config.arg_argmentation_num, method)
+        elif model_type == "MAGNN":
+            logits = model(g)
     val_loss = F.cross_entropy(logits[idx_val], labels[idx_val])
     val_acc, val_micro_f1, val_macro_f1 = score(logits[idx_val], labels[idx_val])
 
@@ -115,7 +139,10 @@ for epoch in range(config.max_epoch):
 stopper.load_checkpoint(model)
 model.eval()
 with torch.no_grad():
-    logits = model(g, augmented_features, config.arg_argmentation_type, config.arg_argmentation_num, method)
+    if model_type == "HAN":
+        logits = model(g, augmented_features, config.arg_argmentation_type, config.arg_argmentation_num, method)
+    elif model_type == "MAGNN":
+        logits = model(g)
 test_loss = F.cross_entropy(logits[idx_test], labels[idx_test])
 test_acc, test_micro_f1, test_macro_f1 = score(logits[idx_test], labels[idx_test])
 print('Test loss {:.4f} | Test Micro f1 {:.4f} | Test Macro f1 {:.4f}'.format(test_loss.item(), test_micro_f1, test_macro_f1))
