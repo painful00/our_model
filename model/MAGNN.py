@@ -28,7 +28,7 @@ class MAGNN_AUG(nn.Module):
             edge_type_list = ["M-D", "D-M", "M-A", "A-M"]
         elif dataset == "acm":
             metapath_list = ["paper-author-paper", "paper-subject-paper"]
-            edge_type_list = ["paper_author", "author_paper", "paper_subject", "subject_paper"]
+            edge_type_list = ["paper-author", "author-paper", "paper-subject", "subject-paper"]
         elif dataset == "yelp":
             metapath_list = ["b-s-b", "b-u-b", "b-u-b-l-b", "b-u-b-s-b"]
             edge_type_list = ["b-l", "l-b", "b-s", "s-b", "b-u", "u-b"]
