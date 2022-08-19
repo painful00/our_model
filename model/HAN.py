@@ -84,3 +84,22 @@ class HAN_AUG(nn.Module):
         logits = self.model(g, g.ndata["h"])[self.target_category]
 
         return logits
+
+
+
+class HAN_AUG_P(nn.Module):
+
+    def __init__(self, config, meta_paths, target_category, hidden_dim, label_num, num_heads, dropout, feature_sizes, mapping_size, category_index, augmentated_types, arg_argmentation_num):
+        super().__init__()
+
+        self.model = HAN(meta_paths, [target_category], feature_sizes[category_index[target_category]], hidden_dim, label_num, num_heads, dropout)
+        self.category_index = category_index
+        self.target_category = target_category
+
+
+
+    def forward(self, g_ori, g_aug):
+
+        logits = self.model(g_aug, g_aug.ndata["h"])[self.target_category]
+
+        return logits
