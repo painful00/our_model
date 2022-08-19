@@ -16,6 +16,7 @@ from typing import List, Tuple
 from model import learner
 from model import simulator
 from scipy import sparse
+import itertools
 
 
 
@@ -51,3 +52,86 @@ class Path_Augmentation:
 
 
 
+def path_augmentation_han(g,path_augmentation,config,target_category,edge_types):
+    # graphon estimator
+    graphons = {}
+    node_num = g.ndata["h"][target_category].size()[0]
+    for path in config.argmentation_path:
+        if not os.path.exists("./output/" + path + ".npz"):
+            graphons[path] = path_augmentation.estimate_graphon(path)
+            np.savez("./output/" + path + ".npz", graphon=graphons[path])
+        else:
+            data = np.load("./output/" + path + ".npz")
+            graphons[path] = data['graphon']
+
+    augmentated_graphs = []
+    # intra-path augmentation
+    for path in config.argmentation_path:
+        augmentated_graphs = augmentated_graphs + path_augmentation.generate_graph(node_num,
+                                                                                   config.argmentation_intra_graph_num,
+                                                                                   graphons[path])
+
+    # inter-path augmentation
+    arg_W = []
+    combinations = list(itertools.combinations(config.argmentation_path, 2))
+    for com1, com2 in combinations:
+        new_graphon = (graphons[com1] + graphons[com2]) / 2
+        arg_W.append(new_graphon)
+        augmentated_graphs = augmentated_graphs + path_augmentation.generate_graph(node_num,
+                                                                                   config.argmentation_inter_graph_num,
+                                                                                   new_graphon)
+
+    # augmentation
+    hetero_dic = {}
+    for edge in edge_types:
+        hetero_dic[(edge_types[edge][0], edge, edge_types[edge][1])] = g[edge].edges()
+    for ind, item in enumerate(augmentated_graphs):
+        adj_mat = sparse.coo_matrix(item)
+        hetero_dic[(target_category, "AUG_" + str(ind), target_category)] = (adj_mat.row, adj_mat.col)
+    new_g = dgl.heterograph(hetero_dic)
+    new_g.nodes[target_category].data["h"] = g.ndata["h"][target_category]
+
+    return new_g, augmentated_graphs
+
+
+def path_augmentation_magnn(g, path_augmentation, config, target_category, edge_types, feature_sizes, category_index):
+    # graphon estimator
+    graphons = {}
+    node_num = g.ndata["h"][target_category].size()[0]
+    for path in config.argmentation_path:
+        if not os.path.exists("./output/" + path + ".npz"):
+            graphons[path] = path_augmentation.estimate_graphon(path)
+            np.savez("./output/" + path + ".npz", graphon=graphons[path])
+        else:
+            data = np.load("./output/" + path + ".npz")
+            graphons[path] = data['graphon']
+
+    augmentated_graphs = []
+    # intra-path augmentation
+    for path in config.argmentation_path:
+        augmentated_graphs = augmentated_graphs + path_augmentation.generate_graph(node_num,config.argmentation_intra_graph_num,graphons[path])
+
+    # inter-path augmentation
+    arg_W = []
+    combinations = list(itertools.combinations(config.argmentation_path, 2))
+    for com1, com2 in combinations:
+        new_graphon = (graphons[com1] + graphons[com2]) / 2
+        arg_W.append(new_graphon)
+        augmentated_graphs = augmentated_graphs + path_augmentation.generate_graph(node_num,config.argmentation_inter_graph_num,new_graphon)
+
+    # augmentation
+    hetero_dic = {}
+    for edge in edge_types:
+        hetero_dic[(edge_types[edge][0], edge, edge_types[edge][1])] = g[edge].edges()
+    for ind, item in enumerate(augmentated_graphs):
+        adj_mat = sparse.coo_matrix(item)
+        hetero_dic[(target_category, "M-M"+str(ind), "M"+str(ind))] = (adj_mat.row, adj_mat.col)
+        hetero_dic[("M"+str(ind), "M"+str(ind)+"-M", target_category)] = (adj_mat.col, adj_mat.row)
+    new_g = dgl.heterograph(hetero_dic)
+    for nodetype in new_g.ntypes:
+        if nodetype not in g.ntypes:
+            new_g.nodes[nodetype].data["h"] = g.ndata["h"][target_category]
+        else:
+            new_g.nodes[nodetype].data["h"] = g.ndata["h"][nodetype]
+
+    return new_g, augmentated_graphs

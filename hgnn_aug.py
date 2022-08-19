@@ -119,7 +119,7 @@ for epoch in range(config.max_epoch):
     if model_type == "HAN":
         logits = model(g, augmented_features, config.arg_argmentation_type, config.arg_argmentation_num, method)
     elif model_type == "MAGNN":
-        logits = model(g)
+        logits = model(g, augmented_features, config.arg_argmentation_type, config.arg_argmentation_num, method)
     loss = F.cross_entropy(logits[idx_train], labels[idx_train])
 
     optimizer.zero_grad()
@@ -134,7 +134,7 @@ for epoch in range(config.max_epoch):
         if model_type == "HAN":
             logits = model(g, augmented_features, config.arg_argmentation_type, config.arg_argmentation_num, method)
         elif model_type == "MAGNN":
-            logits = model(g)
+            logits = model(g, augmented_features, config.arg_argmentation_type, config.arg_argmentation_num, method)
     val_loss = F.cross_entropy(logits[idx_val], labels[idx_val])
     val_acc, val_micro_f1, val_macro_f1 = score(logits[idx_val], labels[idx_val])
 
@@ -158,7 +158,7 @@ with torch.no_grad():
     if model_type == "HAN":
         logits = model(g, augmented_features, config.arg_argmentation_type, config.arg_argmentation_num, method)
     elif model_type == "MAGNN":
-        logits = model(g)
+        logits = model(g, augmented_features, config.arg_argmentation_type, config.arg_argmentation_num, method)
 test_loss = F.cross_entropy(logits[idx_test], labels[idx_test])
 test_acc, test_micro_f1, test_macro_f1 = score(logits[idx_test], labels[idx_test])
 print('Test loss {:.4f} | Test Micro f1 {:.4f} | Test Macro f1 {:.4f}'.format(test_loss.item(), test_micro_f1, test_macro_f1))
