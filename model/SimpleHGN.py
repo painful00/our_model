@@ -24,7 +24,12 @@ class SimpleHGN_AUG(nn.Module):
     def __init__(self, config, g, feature_sizes, category_index, target_category, label_num, dataset):
         super().__init__()
         heads = [config.num_heads] * config.num_layers + [1]
-        self.model = SimpleHGN(config.edge_dim, len(g.etypes), [feature_sizes[category_index[target_category]]], config.hidden_dim, label_num, config.num_layers, heads, config.feat_drop, config.negative_slope, config.residual, config.beta)
+        if config.is_augmentation:
+            self.model = SimpleHGN(config.edge_dim, len(g.etypes), [config.embedding_size * (len(config.arg_argmentation_type)) + feature_sizes[category_index[target_category]]],
+                                   config.hidden_dim, label_num, config.num_layers, heads, config.feat_drop,
+                                   config.negative_slope, config.residual, config.beta)
+        else:
+            self.model = SimpleHGN(config.edge_dim, len(g.etypes), [feature_sizes[category_index[target_category]]], config.hidden_dim, label_num, config.num_layers, heads, config.feat_drop, config.negative_slope, config.residual, config.beta)
         self.look_up_table = []
         self.feature_sizes = feature_sizes
         self.category_index = category_index
@@ -37,8 +42,8 @@ class SimpleHGN_AUG(nn.Module):
                 if i == category_index[target_category]:
                     self.look_up_table.append(identical_map)
                 else:
-                    size = config.embedding_size * (len(config.arg_argmentation_type)) + feature_sizes[category_index[target_category]]
-                    self.look_up_table.append(nn.Linear(size, config.hidden_dim))
+                    size_map = config.embedding_size * (len(config.arg_argmentation_type)) + feature_sizes[category_index[target_category]]
+                    self.look_up_table.append(nn.Linear(size, size_map))
 
         else:
             for i, size in enumerate(feature_sizes):
@@ -47,7 +52,7 @@ class SimpleHGN_AUG(nn.Module):
                 else:
                     self.look_up_table.append(nn.Linear(size, feature_sizes[category_index[target_category]]))
             if dataset == "yelp":
-                self.look_up_table = [identical_map for _ in len(feature_sizes)]
+                self.look_up_table = [identical_map for _ in range(len(feature_sizes))]
 
 
 
@@ -84,7 +89,7 @@ class SimpleHGN_AUG(nn.Module):
                     (g.ndata["h"][self.target_category], dealed_augmentated_features[aug_type]), dim=-1)
             for ntype in g_ori.ntypes:
                 feat_dict[ntype] = self.look_up_table[self.category_index[ntype]](g.ndata["h"][ntype])
-            logits = self.model(g_ori, feat_dict)[self.target_category]
+            logits = self.model(g, feat_dict)[self.target_category]
 
         else:
             for ntype in g_ori.ntypes:
