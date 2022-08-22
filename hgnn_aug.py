@@ -18,11 +18,12 @@ from openhgnn.models.MAGNN import mp_instance_sampler
 from rcvae_model import VAE
 from model.HAN import HAN_AUG
 from model.MAGNN import MAGNN_AUG
+from model.SimpleHGN import SimpleHGN_AUG
 
 
 # conf setting
-model_type = "MAGNN"
-dataset = "imdb"
+model_type = "SimpleHGN"
+dataset = "acm"
 gpu = -1    #   -1:cpu    >0:gpu
 proDir = os.path.split(os.path.realpath(__file__))[0]
 configPath = os.path.join(proDir, "conf.ini")
@@ -67,17 +68,18 @@ if dataset == "acm":
 
 
 # augmentation generator
-path = "./output/rcvae_"+dataset+".pkl"
-if os.path.exists(path):
-    augmentation_generator = VAE(config.embedding_size, config.arg_latent_size, category_index, feature_sizes, e_type_index, has_feature)
-    augmentation_generator.load_state_dict(torch.load(path))
-else:
-    augmentation_generator = VAE(config.embedding_size, config.arg_latent_size, category_index, feature_sizes, e_type_index, has_feature)
-    print("Augmentation generator is not trained")
+if config.is_augmentation:
+    path = "./output/rcvae_"+dataset+".pkl"
+    if os.path.exists(path):
+        augmentation_generator = VAE(config.embedding_size, config.arg_latent_size, category_index, feature_sizes, e_type_index, has_feature)
+        augmentation_generator.load_state_dict(torch.load(path))
+    else:
+        augmentation_generator = VAE(config.embedding_size, config.arg_latent_size, category_index, feature_sizes, e_type_index, has_feature)
+        print("Augmentation generator is not trained")
 
 # Structure Augmentation
+augmented_features = {}
 if config.is_augmentation:
-    augmented_features = {}
     for aug_type in config.arg_argmentation_type:
         augmented_features[aug_type] = []
         aug_category = [category_index[aug_type], category_index[target_category]]
@@ -100,6 +102,8 @@ if model_type == "HAN":
         model = HAN(meta_paths, [target_category], target_feature_size, config.hidden_dim, label_num, config.num_heads, config.dropout)
 elif model_type == "MAGNN":
     model = MAGNN_AUG(config, label_num, g, dataset, target_category, feature_sizes, category_index)
+elif model_type == "SimpleHGN":
+    model = SimpleHGN_AUG(config, g, feature_sizes, category_index, target_category, label_num)
 
 optimizer = torch.optim.AdamW(model.parameters(), lr=config.lr, weight_decay=config.weight_decay)
 stopper = EarlyStopping(patience=config.patience)
@@ -120,6 +124,9 @@ for epoch in range(config.max_epoch):
         logits = model(g, augmented_features, config.arg_argmentation_type, config.arg_argmentation_num, method)
     elif model_type == "MAGNN":
         logits = model(g, augmented_features, config.arg_argmentation_type, config.arg_argmentation_num, method)
+    elif model_type == "SimpleHGN":
+        logits = model(g, augmented_features, config.arg_argmentation_type, config.arg_argmentation_num, method)
+
     loss = F.cross_entropy(logits[idx_train], labels[idx_train])
 
     optimizer.zero_grad()
@@ -134,6 +141,8 @@ for epoch in range(config.max_epoch):
         if model_type == "HAN":
             logits = model(g, augmented_features, config.arg_argmentation_type, config.arg_argmentation_num, method)
         elif model_type == "MAGNN":
+            logits = model(g, augmented_features, config.arg_argmentation_type, config.arg_argmentation_num, method)
+        elif model_type == "SimpleHGN":
             logits = model(g, augmented_features, config.arg_argmentation_type, config.arg_argmentation_num, method)
     val_loss = F.cross_entropy(logits[idx_val], labels[idx_val])
     val_acc, val_micro_f1, val_macro_f1 = score(logits[idx_val], labels[idx_val])
@@ -158,6 +167,8 @@ with torch.no_grad():
     if model_type == "HAN":
         logits = model(g, augmented_features, config.arg_argmentation_type, config.arg_argmentation_num, method)
     elif model_type == "MAGNN":
+        logits = model(g, augmented_features, config.arg_argmentation_type, config.arg_argmentation_num, method)
+    elif model_type == "SimpleHGN":
         logits = model(g, augmented_features, config.arg_argmentation_type, config.arg_argmentation_num, method)
 test_loss = F.cross_entropy(logits[idx_test], labels[idx_test])
 test_acc, test_micro_f1, test_macro_f1 = score(logits[idx_test], labels[idx_test])

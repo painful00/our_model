@@ -39,7 +39,7 @@ class Config(object):
             self.max_epoch = conf.getint('HAN', 'max_epoch')
             self.mini_batch_flag = conf.getboolean("HAN", "mini_batch_flag")
 
-        if self.model == 'MAGNN':
+        elif self.model == 'MAGNN':
             self.lr = conf.getfloat("MAGNN", "learning_rate")
             self.weight_decay = conf.getfloat("MAGNN", "weight_decay")
             self.seed = conf.getint("MAGNN", "seed")
@@ -55,6 +55,22 @@ class Config(object):
             self.batch_size = conf.getint('MAGNN', 'batch_size')
             self.num_samples = conf.getint('MAGNN', 'num_samples')
             self.encoder_type = conf.get('MAGNN', 'encoder_type')
+
+        elif self.model == 'SimpleHGN':
+            self.lr = conf.getfloat("SimpleHGN", "lr")
+            self.weight_decay = conf.getfloat("SimpleHGN", "weight_decay")
+            self.seed = conf.getint("SimpleHGN", "seed")
+            self.feat_drop = conf.getfloat("SimpleHGN", "feats_drop_rate")
+            self.hidden_dim = conf.getint('SimpleHGN', 'h_dim')
+            self.negative_slope = conf.getfloat('SimpleHGN', 'slope')
+            self.edge_dim = conf.getint('SimpleHGN', 'edge_dim')
+            self.max_epoch = conf.getint('SimpleHGN', 'max_epoch')
+            self.patience = conf.getint('SimpleHGN', 'patience')
+            self.beta = conf.getfloat("SimpleHGN", "beta")
+            self.num_layers = conf.getint('SimpleHGN', 'n_layers')
+            self.residual = conf.getboolean('SimpleHGN', 'residual')
+            self.num_heads = conf.getint('SimpleHGN', 'num_heads')
+
 
         # augmentation generator
         # structure

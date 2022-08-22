@@ -13,7 +13,7 @@ from conf import Config
 
 from tqdm import trange
 
-dataset = "acm"
+dataset = "imdb"
 gpu = -1    #   -1:cpu    >0:gpu
 proDir = os.path.split(os.path.realpath(__file__))[0]
 configPath = os.path.join(proDir, "conf.ini")
