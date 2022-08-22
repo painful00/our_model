@@ -99,7 +99,7 @@ class MAGNN_AUG(nn.Module):
 
         else:
             for ntype in g_ori.ntypes:
-                feat_dict[ntype] = self.look_up_table[self.category_index[ntype]](g.ndata["h"][ntype])
+                feat_dict[ntype] = self.look_up_table[self.category_index[ntype]](g_ori.ndata["h"][ntype])
             logits = self.model(g_ori, feat_dict)[self.target_category]
         return logits
 
