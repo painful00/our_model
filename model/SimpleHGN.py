@@ -54,10 +54,6 @@ class SimpleHGN_AUG(nn.Module):
             if dataset == "yelp":
                 self.look_up_table = [identical_map for _ in range(len(feature_sizes))]
 
-
-
-
-
     def forward(self, g_ori, augmentated_features, augmentated_types, augmentated_num, method):
         feat_dict = {}
         if self.config.is_augmentation:
@@ -99,3 +95,39 @@ class SimpleHGN_AUG(nn.Module):
 
 def identical_map(x):
     return x
+
+
+class SimpleHGN_AUG_P(nn.Module):
+
+    def __init__(self, config, g, feature_sizes, category_index, target_category, label_num, dataset):
+        super().__init__()
+        heads = [config.num_heads] * config.num_layers + [1]
+
+        self.model = SimpleHGN(config.edge_dim, len(g.etypes), [feature_sizes[category_index[target_category]]], config.hidden_dim, label_num, config.num_layers, heads, config.feat_drop, config.negative_slope, config.residual, config.beta)
+
+        self.look_up_table = []
+        self.feature_sizes = feature_sizes
+        self.category_index = category_index
+        self.target_category = target_category
+        self.label_num = label_num
+        self.config = config
+
+        for i, size in enumerate(feature_sizes):
+            if i == category_index[target_category]:
+                self.look_up_table.append(identical_map)
+            else:
+                self.look_up_table.append(nn.Linear(size, feature_sizes[category_index[target_category]]))
+        if dataset == "yelp":
+            self.look_up_table = [identical_map for _ in range(len(feature_sizes))]
+
+
+    def forward(self, g_aug):
+        feat_dict = {}
+        for ntype in g_aug.ntypes:
+            if ntype in self.category_index:
+                feat_dict[ntype] = self.look_up_table[self.category_index[ntype]](g_aug.ndata["h"][ntype])
+            else:
+                feat_dict[ntype] = g_aug.ndata["h"][ntype]
+        logits = self.model(g_aug, feat_dict)[self.target_category]
+
+        return logits
