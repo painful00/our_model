@@ -21,7 +21,7 @@ import copy
 
 class SimpleHGN_AUG(nn.Module):
 
-    def __init__(self, config, g, feature_sizes, category_index, target_category, label_num):
+    def __init__(self, config, g, feature_sizes, category_index, target_category, label_num, dataset):
         super().__init__()
         heads = [config.num_heads] * config.num_layers + [1]
         self.model = SimpleHGN(config.edge_dim, len(g.etypes), [feature_sizes[category_index[target_category]]], config.hidden_dim, label_num, config.num_layers, heads, config.feat_drop, config.negative_slope, config.residual, config.beta)
@@ -35,8 +35,10 @@ class SimpleHGN_AUG(nn.Module):
         if config.is_augmentation:
             for i, size in enumerate(feature_sizes):
                 if i == category_index[target_category]:
+                    self.look_up_table.append(identical_map)
+                else:
                     size = config.embedding_size * (len(config.arg_argmentation_type)) + feature_sizes[category_index[target_category]]
-                self.look_up_table.append(nn.Linear(size, config.hidden_dim))
+                    self.look_up_table.append(nn.Linear(size, config.hidden_dim))
 
         else:
             for i, size in enumerate(feature_sizes):
@@ -44,6 +46,10 @@ class SimpleHGN_AUG(nn.Module):
                     self.look_up_table.append(identical_map)
                 else:
                     self.look_up_table.append(nn.Linear(size, feature_sizes[category_index[target_category]]))
+            if dataset == "yelp":
+                self.look_up_table = [identical_map for _ in len(feature_sizes)]
+
+
 
 
 

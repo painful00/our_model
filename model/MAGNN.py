@@ -56,12 +56,16 @@ class MAGNN_AUG(nn.Module):
         if config.is_augmentation:
             for i, size in enumerate(feature_sizes):
                 if i == category_index[target_category]:
-                    size = config.embedding_size * (len(config.arg_argmentation_type)) + feature_sizes[category_index[target_category]]
-                self.look_up_table.append(nn.Linear(size, config.num_heads * config.hidden_dim))
+                    size = config.embedding_size * (len(config.arg_argmentation_type)) + feature_sizes[
+                        category_index[target_category]]
+                self.look_up_table.append(nn.Linear(size, config.hidden_dim))
 
         else:
             for i, size in enumerate(feature_sizes):
-                self.look_up_table.append(nn.Linear(size, config.num_heads*config.hidden_dim))
+                if i == category_index[target_category]:
+                    self.look_up_table.append(identical_map)
+                else:
+                    self.look_up_table.append(nn.Linear(size, feature_sizes[category_index[target_category]]))
 
 
     def forward(self, g_ori, augmentated_features, augmentated_types, augmentated_num, method):
@@ -168,3 +172,6 @@ class MAGNN_AUG_P(nn.Module):
         logits = self.model(new_g, feat_dict)[self.target_category]
 
         return logits
+
+def identical_map(x):
+    return x
