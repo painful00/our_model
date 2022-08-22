@@ -103,7 +103,7 @@ if model_type == "HAN":
 elif model_type == "MAGNN":
     model = MAGNN_AUG(config, label_num, g, dataset, target_category, feature_sizes, category_index)
 elif model_type == "SimpleHGN":
-    model = SimpleHGN_AUG(config, g, feature_sizes, category_index, target_category, label_num)
+    model = SimpleHGN_AUG(config, g, feature_sizes, category_index, target_category, label_num, dataset)
 
 optimizer = torch.optim.AdamW(model.parameters(), lr=config.lr, weight_decay=config.weight_decay)
 stopper = EarlyStopping(patience=config.patience)
