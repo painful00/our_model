@@ -96,7 +96,7 @@ if config.is_augmentation:
     elif model_type == "MAGNN":
         model = MAGNN_AUG_P(config, label_num, new_g, dataset, target_category, feature_sizes, category_index)
     elif model_type == "SimpleHGN":
-        model = SimpleHGN_AUG_P(config, new_g, feature_sizes, category_index, target_category, label_num, dataset)
+        model = SimpleHGN_AUG_P(config, new_g, g, feature_sizes, category_index, target_category, label_num, dataset)
 
 else:
     if model_type == "HAN":
@@ -124,7 +124,7 @@ for epoch in range(config.max_epoch):
     elif model_type == "MAGNN":
         logits = model(new_g)
     elif model_type == "SimpleHGN":
-        logits = model(new_g)
+        logits = model(new_g, g)
     loss = F.cross_entropy(logits[idx_train], labels[idx_train])
 
     optimizer.zero_grad()
@@ -141,7 +141,7 @@ for epoch in range(config.max_epoch):
         elif model_type == "MAGNN":
             logits = model(new_g)
         elif model_type == "SimpleHGN":
-            logits = model(new_g)
+            logits = model(new_g, g)
     val_loss = F.cross_entropy(logits[idx_val], labels[idx_val])
     val_acc, val_micro_f1, val_macro_f1 = score(logits[idx_val], labels[idx_val])
 
@@ -167,7 +167,7 @@ with torch.no_grad():
     elif model_type == "MAGNN":
         logits = model(new_g)
     elif model_type == "SimpleHGN":
-        logits = model(new_g)
+        logits = model(new_g, g)
 test_loss = F.cross_entropy(logits[idx_test], labels[idx_test])
 test_acc, test_micro_f1, test_macro_f1 = score(logits[idx_test], labels[idx_test])
 print('Test loss {:.4f} | Test Micro f1 {:.4f} | Test Macro f1 {:.4f}'.format(test_loss.item(), test_micro_f1, test_macro_f1))
