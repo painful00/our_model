@@ -48,11 +48,10 @@ def generated_generator(config, device, g, category_index, feature_sizes, edge_t
     e_type_index = {}
     for ind,e in enumerate(g.etypes):
         e_type_index[e] = ind
-    has_feature = False
-    # if dataset == "yelp":
-    #     has_feature = True
-    # else:
-    #     has_feature = False
+    if dataset == "yelp":
+        has_feature = True
+    else:
+        has_feature = False
 
     # Pretrain
     rcvae = VAE(embedding_size=config.embedding_size,

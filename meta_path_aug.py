@@ -20,7 +20,6 @@ from model.HAN import HAN_AUG_P
 from model.MAGNN import MAGNN_AUG_P
 from model.SimpleHGN import SimpleHGN_AUG_P
 from openhgnn import HAN
-from rcvae_model import VAE
 
 
 
@@ -68,19 +67,9 @@ if dataset == "acm":
     g = G
 
 
-# CVAE loading
-path = "./output/rcvae_"+dataset+".pkl"
-if os.path.exists(path):
-    augmentation_generator = VAE(config.embedding_size, config.arg_latent_size, category_index, feature_sizes, e_type_index, has_feature)
-    augmentation_generator.load_state_dict(torch.load(path))
-else:
-    augmentation_generator = VAE(config.embedding_size, config.arg_latent_size, category_index, feature_sizes, e_type_index, has_feature)
-    print("Augmentation generator is not trained")
-
-
 # meta-path augmentation
 method = "SGWB"    # ['SBA', 'SAS', 'LG', 'MC', 'USVT', 'GWB', 'SGWB', 'FGWB', 'SFGWB']
-path_augmentation = Path_Augmentation(g, meta_paths, method, config, augmentation_generator, category_index)
+path_augmentation = Path_Augmentation(g, meta_paths, method, config)
 
 if model_type == "HAN":
     new_g, augmentated_graphs = path_augmentation_han(g,path_augmentation,config,target_category,edge_types)
