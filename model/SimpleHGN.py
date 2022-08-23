@@ -103,7 +103,7 @@ class SimpleHGN_AUG_P(nn.Module):
         super().__init__()
         heads = [config.num_heads] * config.num_layers + [1]
 
-        self.model = SimpleHGN(config.edge_dim, len(g1.etypes), [feature_sizes[category_index[target_category]]], config.hidden_dim, label_num, config.num_layers, heads, config.feat_drop, config.negative_slope, config.residual, config.beta)
+        self.model = SimpleHGN(config.edge_dim, len(g1.etypes) + len(g2.etypes), [feature_sizes[category_index[target_category]]], config.hidden_dim, label_num, config.num_layers, heads, config.feat_drop, config.negative_slope, config.residual, config.beta)
 
         self.look_up_table = []
         self.feature_sizes = feature_sizes
