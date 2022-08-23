@@ -60,7 +60,7 @@ class VAE(nn.Module):
         return x
 
     def find_embedding(self, x, category):
-        return self.look_up_tablep[self.category_index[category]](x).detach()
+        return self.look_up_table[self.category_index[category]](x).detach()
 
 class Encoder(nn.Module):
 
