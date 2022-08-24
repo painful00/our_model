@@ -119,7 +119,7 @@ class SimpleHGN_AUG_P(nn.Module):
                                    config.hidden_dim, label_num, config.num_layers, heads, config.feat_drop,
                                    config.negative_slope, config.residual, config.beta)
 
-        self.mapping = nn.Linear(config.argmentation_intra_graph_num*len(config.argmentation_path) * label_num +label_num, label_num)
+        self.mapping = nn.Linear(config.argmentation_intra_graph_num*len(config.argmentation_path) * self.augmented_dim +label_num, label_num)
 
         self.gcn = SGConv(feature_sizes[category_index[target_category]], self.augmented_dim, k=2, cached=True, bias=False)
 
@@ -136,17 +136,23 @@ class SimpleHGN_AUG_P(nn.Module):
 
         feat_dict = {}
 
-        for ntype in g_ori.ntypes:
-            feat_dict[ntype] = self.look_up_table[self.category_index[ntype]](g_ori.ndata["h"][ntype])
-        logits1 = self.model(g_ori, feat_dict)[self.target_category]
+        if self.config.is_augmentation:
+            for ntype in g_ori.ntypes:
+                feat_dict[ntype] = self.look_up_table[self.category_index[ntype]](g_ori.ndata["h"][ntype])
+            logits1 = self.model(g_ori, feat_dict)[self.target_category]
 
-        for g in g_aug:
-            aug_fea = self.gcn(g, g.ndata['h'])
-            logits1 = torch.cat((logits1, aug_fea), dim=-1)
+            for g in g_aug:
+                aug_fea = self.gcn(g, g.ndata['h'])
+                logits1 = torch.cat((logits1, F.sigmoid(aug_fea)), dim=-1)
+            logits = self.mapping(logits1)
+
+        else:
+            for ntype in g_ori.ntypes:
+                feat_dict[ntype] = self.look_up_table[self.category_index[ntype]](g_ori.ndata["h"][ntype])
+            logits = self.model(g_ori, feat_dict)[self.target_category]
 
 
 
-        logits = self.mapping(logits1)
 
         # feat_dict = {}
         # if self.config.is_augmentation:
@@ -171,4 +177,4 @@ class SimpleHGN_AUG_P(nn.Module):
         #         feat_dict[ntype] = self.look_up_table[self.category_index[ntype]](g_ori.ndata["h"][ntype])
         #     logits = self.model(g_ori, feat_dict)[self.target_category]
 
-        return logits1
+        return logits
