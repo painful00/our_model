@@ -65,6 +65,7 @@ if dataset == "acm":
     G.nodes["author"].data['h'] = g.ndata["h"]["author"]
     G.nodes["subject"].data['h'] = g.ndata["h"]["subject"]
     g = G
+    meta_paths = {"PAP":['paper-author', 'author-paper'], "PSP":['paper-subject', 'subject-paper']}
 
 
 # meta-path augmentation

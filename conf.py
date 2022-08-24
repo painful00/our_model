@@ -71,6 +71,22 @@ class Config(object):
             self.residual = conf.getboolean('SimpleHGN', 'residual')
             self.num_heads = conf.getint('SimpleHGN', 'num_heads')
 
+        elif self.model == "HGT":
+            self.lr = conf.getfloat("HGT", "learning_rate")
+            self.weight_decay = conf.getfloat("HGT", "weight_decay")
+            self.seed = conf.getint("HGT", "seed")
+            self.dropout = conf.getfloat("HGT", "dropout")
+            self.batch_size = conf.getint('HGT', 'batch_size')
+            self.patience = conf.getint('HGT', 'patience')
+            self.hidden_dim = conf.getint('HGT', 'hidden_dim')
+            self.out_dim = conf.getint('HGT', 'out_dim')
+            self.num_layers = conf.getint('HGT', 'num_layers')
+            self.num_heads = conf.getint('HGT', 'num_heads')
+            self.num_workers = conf.getint('HGT', 'num_workers')
+            self.max_epoch = conf.getint('HGT', 'max_epoch')
+            self.mini_batch_flag = conf.getboolean("HGT", "mini_batch_flag")
+            self.norm = conf.getboolean("HGT", "norm")
+
 
         # augmentation generator
         # structure
@@ -96,8 +112,4 @@ class Config(object):
         self.argmentation_path = eval(conf.get('Augmentation', 'argmentation_path'))
         self.argmentation_intra_graph_num = conf.getint('Augmentation', 'argmentation_intra_graph_num')
         self.argmentation_inter_graph_num = conf.getint('Augmentation', 'argmentation_inter_graph_num')
-
-
-
-
 

@@ -164,20 +164,30 @@ def path_augmentation_simplehgn(g, path_augmentation, config, target_category, e
         arg_W.append(new_graphon)
         augmentated_graphs = augmentated_graphs + path_augmentation.generate_graph(node_num,config.argmentation_inter_graph_num,new_graphon)
 
+
     # augmentation
-    hetero_dic = {}
-    # for edge in edge_types:
-    #     hetero_dic[(edge_types[edge][0], edge, edge_types[edge][1])] = g[edge].edges()
+    new_g = []
     for ind, item in enumerate(augmentated_graphs):
         adj_mat = sparse.coo_matrix(item)
-        hetero_dic[(target_category, target_category + "-" + target_category + str(ind), target_category + str(ind))] = (adj_mat.row, adj_mat.col)
-        hetero_dic[(target_category + str(ind), target_category + str(ind) + "-" + target_category, target_category)] = (adj_mat.col, adj_mat.row)
-    new_g = dgl.heterograph(hetero_dic)
-    for nodetype in new_g.ntypes:
-        if nodetype not in g.ntypes:
-            new_g.nodes[nodetype].data["h"] = g.ndata["h"][target_category]
-        else:
-            new_g.nodes[nodetype].data["h"] = g.ndata["h"][nodetype]
+        _g = dgl.graph((adj_mat.row, adj_mat.col))
+        _g.ndata['h'] = g.ndata["h"][target_category]
+        new_g.append(_g)
+
+
+
+    # hetero_dic = {}
+    # # for edge in edge_types:
+    # #     hetero_dic[(edge_types[edge][0], edge, edge_types[edge][1])] = g[edge].edges()
+    # for ind, item in enumerate(augmentated_graphs):
+    #     adj_mat = sparse.coo_matrix(item)
+    #     hetero_dic[(target_category, target_category + "-" + target_category + str(ind), target_category + str(ind))] = (adj_mat.row, adj_mat.col)
+    #     hetero_dic[(target_category + str(ind), target_category + str(ind) + "-" + target_category, target_category)] = (adj_mat.col, adj_mat.row)
+    # new_g = dgl.heterograph(hetero_dic)
+    # for nodetype in new_g.ntypes:
+    #     if nodetype not in g.ntypes:
+    #         new_g.nodes[nodetype].data["h"] = g.ndata["h"][target_category]
+    #     else:
+    #         new_g.nodes[nodetype].data["h"] = g.ndata["h"][nodetype]
 
 
     return new_g, augmentated_graphs
