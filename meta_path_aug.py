@@ -10,7 +10,7 @@ import rcvae_pretrain
 from utils import load_data, feature_tensor_normalize, score, EarlyStopping
 import os
 from conf import Config
-from path_aug_model import Path_Augmentation, path_augmentation_han, path_augmentation_magnn, path_augmentation_simplehgn
+from path_aug_model import Path_Augmentation, path_augmentation_han, path_augmentation_magnn, path_augmentation_simplehgn, path_augmentation_hgt
 import itertools
 from tqdm import trange
 from scipy import sparse
@@ -19,6 +19,7 @@ import pickle
 from model.HAN import HAN_AUG_P
 from model.MAGNN import MAGNN_AUG_P
 from model.SimpleHGN import SimpleHGN_AUG_P
+from model.HGT import HGT_AUG_P
 from openhgnn import HAN
 
 
@@ -84,6 +85,8 @@ elif model_type == "MAGNN":
         feature_sizes.append(new_g.ndata['h'][cat].size()[1])
 elif model_type == "SimpleHGN":
     new_g, augmentated_graphs = path_augmentation_simplehgn(g, path_augmentation, config, target_category, edge_types)
+elif model_type == "HGT":
+    new_g, augmentated_graphs = path_augmentation_hgt(g, path_augmentation, config, target_category, edge_types)
 
 
 # model
@@ -98,6 +101,8 @@ if config.is_augmentation:
         model = MAGNN_AUG_P(config, label_num, new_g, dataset, target_category, feature_sizes, category_index)
     elif model_type == "SimpleHGN":
         model = SimpleHGN_AUG_P(config, new_g, g, feature_sizes, category_index, target_category, label_num, dataset)
+    elif model_type == "HGT":
+        model = HGT_AUG_P(config, new_g, g, feature_sizes, category_index, target_category, label_num, dataset, augmentated_graphs)
 
 else:
     if model_type == "HAN":
@@ -105,7 +110,9 @@ else:
     elif model_type == "MAGNN":
         model = MAGNN_AUG_P(config, label_num, new_g, dataset, target_category, feature_sizes, category_index)
     elif model_type == "SimpleHGN":
-        model = SimpleHGN_AUG_P(config, g, feature_sizes, category_index, target_category, label_num, dataset)
+        model = SimpleHGN_AUG_P(config, new_g, g, feature_sizes, category_index, target_category, label_num, dataset)
+    elif model_type == "HGT":
+        model = HGT_AUG_P(config, new_g, g, feature_sizes, category_index, target_category, label_num, dataset, augmentated_graphs)
 optimizer = torch.optim.AdamW(model.parameters(), lr=config.lr, weight_decay=config.weight_decay)
 stopper = EarlyStopping(patience=config.patience)
 if gpu >= 0:
@@ -126,6 +133,8 @@ for epoch in range(config.max_epoch):
         logits = model(new_g)
     elif model_type == "SimpleHGN":
         logits = model(new_g, g)
+    elif model_type == "HGT":
+        logits = model(new_g, g)
     loss = F.cross_entropy(logits[idx_train], labels[idx_train])
 
     optimizer.zero_grad()
@@ -142,6 +151,8 @@ for epoch in range(config.max_epoch):
         elif model_type == "MAGNN":
             logits = model(new_g)
         elif model_type == "SimpleHGN":
+            logits = model(new_g, g)
+        elif model_type == "HGT":
             logits = model(new_g, g)
     val_loss = F.cross_entropy(logits[idx_val], labels[idx_val])
     val_acc, val_micro_f1, val_macro_f1 = score(logits[idx_val], labels[idx_val])
@@ -168,6 +179,8 @@ with torch.no_grad():
     elif model_type == "MAGNN":
         logits = model(new_g)
     elif model_type == "SimpleHGN":
+        logits = model(new_g, g)
+    elif model_type == "HGT":
         logits = model(new_g, g)
 test_loss = F.cross_entropy(logits[idx_test], labels[idx_test])
 test_acc, test_micro_f1, test_macro_f1 = score(logits[idx_test], labels[idx_test])
