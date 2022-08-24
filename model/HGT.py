@@ -7,16 +7,84 @@ import random
 import torch.nn.functional as F
 import torch.optim as optim
 import rcvae_pretrain
-from utils import load_data, feature_tensor_normalize
+from utils import load_data, feature_tensor_normalize, to_hetero_feat
 import os
 from tqdm import trange
 from conf import Config
 import dgl
 from utils import load_data, score, EarlyStopping
-from openhgnn import HGT
+from dgl.nn.pytorch.conv import HGTConv
 from rcvae_model import VAE
 import torch.nn as nn
 import copy
+
+class HGT(nn.Module):
+    def __init__(self, in_dim, hidden_dim, out_dim, num_heads, num_etypes, num_ntypes,
+                 num_layers, dropout=0.2, norm=False):
+        super(HGT, self).__init__()
+        self.num_layers = num_layers
+        self.hgt_layers = nn.ModuleList()
+        self.hgt_layers.append(
+            HGTConv(in_dim,
+                    hidden_dim,
+                    num_heads,
+                    num_ntypes,
+                    num_etypes,
+                    dropout,
+                    norm)
+        )
+
+        for _ in range(1, num_layers - 1):
+            self.hgt_layers.append(
+                HGTConv(hidden_dim * num_heads,
+                        hidden_dim,
+                        num_heads,
+                        num_ntypes,
+                        num_etypes,
+                        dropout,
+                        norm)
+            )
+
+        self.hgt_layers.append(
+            HGTConv(hidden_dim * num_heads,
+                    out_dim,
+                    1,
+                    num_ntypes,
+                    num_etypes,
+                    dropout,
+                    norm)
+        )
+
+    def forward(self, hg, h_dict):
+        """
+        The forward part of the HGT.
+
+        Parameters
+        ----------
+        hg : object
+            the dgl heterogeneous graph
+        h_dict: dict
+            the feature dict of different node types
+
+        Returns
+        -------
+        dict
+            The embeddings after the output projection.
+        """
+        with hg.local_scope():
+            hg.ndata['h'] = h_dict
+            g = dgl.to_homogeneous(hg, ndata='h')
+            h = g.ndata['h']
+            for l in range(self.num_layers):
+                h = self.hgt_layers[l](g, h, g.ndata['_TYPE'], g.edata['_TYPE'], presorted=True)
+
+        h_dict = to_hetero_feat(h, g.ndata['_TYPE'], hg.ntypes)
+        # hg = dgl.to_heterogeneous(g, hg.ntypes, hg.etypes)
+        # h_dict = hg.ndata['h']
+
+        return h_dict
+
+
 
 class HGT_AUG(nn.Module):
 
@@ -24,10 +92,10 @@ class HGT_AUG(nn.Module):
         super().__init__()
 
         if config.is_augmentation:
-            self.model = HGT(feature_sizes[category_index[target_category]], label_num, config.num_heads, len(g.etypes), len(g.ntypes), config.num_layers, config.dropout, config.norm)
+            self.model = HGT(config.embedding_size * (len(config.arg_argmentation_type)) + feature_sizes[category_index[target_category]], config.hidden_dim, label_num, config.num_heads, len(g.etypes), len(g.ntypes), config.num_layers, config.dropout, config.norm)
 
         else:
-            self.model = HGT(feature_sizes[category_index[target_category]], label_num, config.num_heads, len(g.etypes), len(g.ntypes), config.num_layers, config.dropout, config.norm)
+            self.model = HGT(feature_sizes[category_index[target_category]], config.hidden_dim, label_num, config.num_heads, len(g.etypes), len(g.ntypes), config.num_layers, config.dropout, config.norm)
 
         self.look_up_table = []
         self.feature_sizes = feature_sizes
