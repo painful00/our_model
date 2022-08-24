@@ -17,6 +17,7 @@ from openhgnn import SimpleHGN
 from rcvae_model import VAE
 import torch.nn as nn
 import copy
+from dgl.nn.pytorch.conv import SGConv
 
 
 class SimpleHGN_AUG(nn.Module):
@@ -103,16 +104,24 @@ class SimpleHGN_AUG_P(nn.Module):
         super().__init__()
         heads = [config.num_heads] * config.num_layers + [1]
 
-        self.model = SimpleHGN(config.edge_dim, len(g1.etypes)+len(g2.etypes), [feature_sizes[category_index[target_category]]], config.hidden_dim, label_num, config.num_layers, heads, config.feat_drop, config.negative_slope, config.residual, config.beta)
-
         self.look_up_table = []
         self.feature_sizes = feature_sizes
         self.category_index = category_index
         self.target_category = target_category
         self.label_num = label_num
         self.config = config
+        self.augmented_dim = 3
 
-        self.mapping = nn.Linear(2*label_num, label_num)
+        if config.is_augmentation:
+            self.model = SimpleHGN(config.edge_dim, len(g2.etypes), [feature_sizes[category_index[target_category]]], config.hidden_dim, label_num, config.num_layers, heads, config.feat_drop, config.negative_slope, config.residual, config.beta)
+        else:
+            self.model = SimpleHGN(config.edge_dim, len(g2.etypes), [feature_sizes[category_index[target_category]]],
+                                   config.hidden_dim, label_num, config.num_layers, heads, config.feat_drop,
+                                   config.negative_slope, config.residual, config.beta)
+
+        self.mapping = nn.Linear(config.argmentation_intra_graph_num*len(config.argmentation_path) * label_num +label_num, label_num)
+
+        self.gcn = SGConv(feature_sizes[category_index[target_category]], self.augmented_dim, k=2, cached=True, bias=False)
 
         for i, size in enumerate(feature_sizes):
             if i == category_index[target_category]:
@@ -124,20 +133,42 @@ class SimpleHGN_AUG_P(nn.Module):
 
 
     def forward(self, g_aug, g_ori):
-        feat_dict = {}
-        for ntype in g_aug.ntypes:
-            if ntype in self.category_index:
-                feat_dict[ntype] = self.look_up_table[self.category_index[ntype]](g_aug.ndata["h"][ntype])
-            else:
-                feat_dict[ntype] = g_aug.ndata["h"][ntype]
-        logits1 = self.model(g_aug, feat_dict)[self.target_category]
 
         feat_dict = {}
+
         for ntype in g_ori.ntypes:
-            if ntype in self.category_index:
-                feat_dict[ntype] = self.look_up_table[self.category_index[ntype]](g_ori.ndata["h"][ntype])
-        logits2 = self.model(g_ori, feat_dict)[self.target_category]
+            feat_dict[ntype] = self.look_up_table[self.category_index[ntype]](g_ori.ndata["h"][ntype])
+        logits1 = self.model(g_ori, feat_dict)[self.target_category]
 
-        logits = F.softmax(self.mapping(torch.cat((logits1,logits2), dim=-1)), dim=-1)
+        for g in g_aug:
+            aug_fea = self.gcn(g, g.ndata['h'])
+            logits1 = torch.cat((logits1, aug_fea), dim=-1)
 
-        return logits
+
+
+        logits = self.mapping(logits1)
+
+        # feat_dict = {}
+        # if self.config.is_augmentation:
+        #     for ntype in g_aug.ntypes:
+        #         if ntype in self.category_index:
+        #             feat_dict[ntype] = self.look_up_table[self.category_index[ntype]](g_aug.ndata["h"][ntype])
+        #         else:
+        #             feat_dict[ntype] = g_aug.ndata["h"][ntype]
+        #     logits1 = self.model(g_aug, feat_dict)[self.target_category]
+        #
+        #     feat_dict = {}
+        #     for ntype in g_ori.ntypes:
+        #         if ntype in self.category_index:
+        #             feat_dict[ntype] = self.look_up_table[self.category_index[ntype]](g_ori.ndata["h"][ntype])
+        #     logits2 = self.model(g_ori, feat_dict)[self.target_category]
+        #
+        #     logits = F.softmax(self.mapping(torch.cat((logits1,logits2), dim=-1)), dim=-1)
+        #
+        #
+        # else:
+        #     for ntype in g_ori.ntypes:
+        #         feat_dict[ntype] = self.look_up_table[self.category_index[ntype]](g_ori.ndata["h"][ntype])
+        #     logits = self.model(g_ori, feat_dict)[self.target_category]
+
+        return logits1
