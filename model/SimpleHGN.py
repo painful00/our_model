@@ -106,7 +106,7 @@ class SimpleHGN_AUG_P(nn.Module):
         if config.is_augmentation:
             self.model = SimpleHGN(config.edge_dim, len(g1.etypes)+len(g2.etypes), [feature_sizes[category_index[target_category]]], config.hidden_dim, label_num, config.num_layers, heads, config.feat_drop, config.negative_slope, config.residual, config.beta)
         else:
-            self.model = SimpleHGN(config.edge_dim, len(g.etypes), [feature_sizes[category_index[target_category]]],
+            self.model = SimpleHGN(config.edge_dim, len(g2.etypes), [feature_sizes[category_index[target_category]]],
                                    config.hidden_dim, label_num, config.num_layers, heads, config.feat_drop,
                                    config.negative_slope, config.residual, config.beta)
 
