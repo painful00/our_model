@@ -20,11 +20,12 @@ from model.HAN import HAN_AUG
 from model.MAGNN import MAGNN_AUG
 from model.SimpleHGN import SimpleHGN_AUG
 from model.HGT import HGT_AUG
+from model.HPN import HPN_AUG
 
 
 # conf setting
-model_type = "HGT"
-dataset = "imdb"
+model_type = "HPN"
+dataset = "acm"
 gpu = -1    #   -1:cpu    >0:gpu
 proDir = os.path.split(os.path.realpath(__file__))[0]
 configPath = os.path.join(proDir, "conf.ini")
@@ -66,6 +67,7 @@ if dataset == "acm":
     G.nodes["author"].data['h'] = g.ndata["h"]["author"]
     G.nodes["subject"].data['h'] = g.ndata["h"]["subject"]
     g = G
+    meta_paths = {"PAP":['paper-author', 'author-paper'], "PSP":['paper-subject', 'subject-paper']}
 
 
 # augmentation generator
@@ -107,6 +109,8 @@ elif model_type == "SimpleHGN":
     model = SimpleHGN_AUG(config, g, feature_sizes, category_index, target_category, label_num, dataset)
 elif model_type == "HGT":
     model = HGT_AUG(config, g, feature_sizes, category_index, target_category, label_num, dataset)
+elif model_type == "HPN":
+    model = HPN_AUG(config, g, feature_sizes, category_index, target_category, label_num, dataset, meta_paths)
 
 optimizer = torch.optim.AdamW(model.parameters(), lr=config.lr, weight_decay=config.weight_decay)
 stopper = EarlyStopping(patience=config.patience)
@@ -131,6 +135,8 @@ for epoch in range(config.max_epoch):
         logits = model(g, augmented_features, config.arg_argmentation_type, config.arg_argmentation_num, method)
     elif model_type == "HGT":
         logits = model(g, augmented_features, config.arg_argmentation_type, config.arg_argmentation_num, method)
+    elif model_type == "HPN":
+        logits = model(g, augmented_features, config.arg_argmentation_type, config.arg_argmentation_num, method)
 
     loss = F.cross_entropy(logits[idx_train], labels[idx_train])
 
@@ -150,6 +156,8 @@ for epoch in range(config.max_epoch):
         elif model_type == "SimpleHGN":
             logits = model(g, augmented_features, config.arg_argmentation_type, config.arg_argmentation_num, method)
         elif model_type == "HGT":
+            logits = model(g, augmented_features, config.arg_argmentation_type, config.arg_argmentation_num, method)
+        elif model_type == "HPN":
             logits = model(g, augmented_features, config.arg_argmentation_type, config.arg_argmentation_num, method)
     val_loss = F.cross_entropy(logits[idx_val], labels[idx_val])
     val_acc, val_micro_f1, val_macro_f1 = score(logits[idx_val], labels[idx_val])
@@ -178,6 +186,8 @@ with torch.no_grad():
     elif model_type == "SimpleHGN":
         logits = model(g, augmented_features, config.arg_argmentation_type, config.arg_argmentation_num, method)
     elif model_type == "HGT":
+        logits = model(g, augmented_features, config.arg_argmentation_type, config.arg_argmentation_num, method)
+    elif model_type == "HPN":
         logits = model(g, augmented_features, config.arg_argmentation_type, config.arg_argmentation_num, method)
 test_loss = F.cross_entropy(logits[idx_test], labels[idx_test])
 test_acc, test_micro_f1, test_macro_f1 = score(logits[idx_test], labels[idx_test])

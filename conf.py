@@ -87,6 +87,21 @@ class Config(object):
             self.mini_batch_flag = conf.getboolean("HGT", "mini_batch_flag")
             self.norm = conf.getboolean("HGT", "norm")
 
+        elif self.model == "HPN":
+            self.lr = conf.getfloat("HPN", "learning_rate")
+            self.weight_decay = conf.getfloat("HPN", "weight_decay")
+            self.seed = conf.getint("HPN", "seed")
+            self.dropout = conf.getfloat("HPN", "dropout")
+            self.k_layer = conf.getint('HPN', 'k_layer')
+            self.patience = conf.getint('HPN', 'patience')
+            self.hidden_dim = conf.getint('HPN', 'hidden_dim')
+            self.out_dim = conf.getint('HPN', 'out_dim')
+            self.alpha = conf.getfloat('HPN', 'alpha')
+            self.edge_drop = conf.getfloat('HPN', 'edge_drop')
+            self.max_epoch = conf.getint('HPN', 'max_epoch')
+            self.mini_batch_flag = conf.getboolean("HGT", "mini_batch_flag")
+
+
 
         # augmentation generator
         # structure
