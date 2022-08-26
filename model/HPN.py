@@ -95,3 +95,39 @@ class HPN_AUG(nn.Module):
 
 def identical_map(x):
     return x
+
+
+class HPN_AUG_P(nn.Module):
+
+    def __init__(self, config, g1, g2, feature_sizes, category_index, target_category, label_num, dataset, arg_graphs, meta_path):
+        super().__init__()
+
+        if config.is_augmentation:
+            self.model = HPN(meta_path, [target_category], feature_sizes[category_index[target_category]], label_num, config.dropout, config.k_layer, config.alpha, config.edge_drop)
+
+        else:
+            self.model = HPN(meta_path, [target_category], feature_sizes[category_index[target_category]], label_num, config.dropout, config.k_layer, config.alpha, config.edge_drop)
+
+        self.look_up_table = []
+        self.feature_sizes = feature_sizes
+        self.category_index = category_index
+        self.target_category = target_category
+        self.label_num = label_num
+        self.config = config
+
+        for i, size in enumerate(feature_sizes):
+            if i == category_index[target_category]:
+                self.look_up_table.append(identical_map)
+            else:
+                self.look_up_table.append(nn.Linear(size, feature_sizes[category_index[target_category]]))
+        if dataset == "yelp":
+            self.look_up_table = [identical_map for _ in range(len(feature_sizes))]
+
+
+    def forward(self, g_aug, g_ori):
+        feat_dict = {}
+        for ntype in g_aug.ntypes:
+            feat_dict[ntype] = self.look_up_table[self.category_index[ntype]](g_aug.ndata["h"][ntype])
+        logits = self.model(g_aug, feat_dict)[self.target_category]
+
+        return logits
