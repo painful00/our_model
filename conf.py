@@ -101,6 +101,20 @@ class Config(object):
             self.max_epoch = conf.getint('HPN', 'max_epoch')
             self.mini_batch_flag = conf.getboolean("HGT", "mini_batch_flag")
 
+        elif self.model == "CompGCN":
+            self.lr = conf.getfloat("CompGCN", "learning_rate")
+            self.weight_decay = conf.getfloat("CompGCN", "weight_decay")
+            self.seed = conf.getint("CompGCN", "seed")
+            self.dropout = conf.getfloat("CompGCN", "dropout")
+            self.num_layers = conf.getint('CompGCN', 'n_layers')
+            self.patience = conf.getint('CompGCN', 'patience')
+            self.in_dim = conf.getint('CompGCN', 'in_dim')
+            self.hidden_dim = conf.getint('CompGCN', 'hidden_dim')
+            self.out_dim = conf.getint('CompGCN', 'out_dim')
+            self.comp_fn = conf.get('CompGCN', 'comp_fn')
+            self.max_epoch = conf.getint('CompGCN', 'max_epoch')
+            self.mini_batch_flag = conf.getboolean("CompGCN", "mini_batch_flag")
+            self.validation = conf.getboolean("CompGCN", "validation")
 
 
         # augmentation generator

@@ -21,10 +21,11 @@ from model.MAGNN import MAGNN_AUG
 from model.SimpleHGN import SimpleHGN_AUG
 from model.HGT import HGT_AUG
 from model.HPN import HPN_AUG
+from model.CompGCN import CompGCN_AUG
 
 
 # conf setting
-model_type = "HPN"
+model_type = "CompGCN"
 dataset = "acm"
 gpu = -1    #   -1:cpu    >0:gpu
 proDir = os.path.split(os.path.realpath(__file__))[0]
@@ -111,6 +112,8 @@ elif model_type == "HGT":
     model = HGT_AUG(config, g, feature_sizes, category_index, target_category, label_num, dataset)
 elif model_type == "HPN":
     model = HPN_AUG(config, g, feature_sizes, category_index, target_category, label_num, dataset, meta_paths)
+elif model_type == "CompGCN":
+    model = CompGCN_AUG(config, g, feature_sizes, category_index, target_category, label_num, dataset)
 
 optimizer = torch.optim.AdamW(model.parameters(), lr=config.lr, weight_decay=config.weight_decay)
 stopper = EarlyStopping(patience=config.patience)
@@ -137,6 +140,8 @@ for epoch in range(config.max_epoch):
         logits = model(g, augmented_features, config.arg_argmentation_type, config.arg_argmentation_num, method)
     elif model_type == "HPN":
         logits = model(g, augmented_features, config.arg_argmentation_type, config.arg_argmentation_num, method)
+    elif model_type == "CompGCN":
+        logits = model(g, augmented_features, config.arg_argmentation_type, config.arg_argmentation_num, method)
 
     loss = F.cross_entropy(logits[idx_train], labels[idx_train])
 
@@ -158,6 +163,8 @@ for epoch in range(config.max_epoch):
         elif model_type == "HGT":
             logits = model(g, augmented_features, config.arg_argmentation_type, config.arg_argmentation_num, method)
         elif model_type == "HPN":
+            logits = model(g, augmented_features, config.arg_argmentation_type, config.arg_argmentation_num, method)
+        elif model_type == "CompGCN":
             logits = model(g, augmented_features, config.arg_argmentation_type, config.arg_argmentation_num, method)
     val_loss = F.cross_entropy(logits[idx_val], labels[idx_val])
     val_acc, val_micro_f1, val_macro_f1 = score(logits[idx_val], labels[idx_val])
@@ -188,6 +195,8 @@ with torch.no_grad():
     elif model_type == "HGT":
         logits = model(g, augmented_features, config.arg_argmentation_type, config.arg_argmentation_num, method)
     elif model_type == "HPN":
+        logits = model(g, augmented_features, config.arg_argmentation_type, config.arg_argmentation_num, method)
+    elif model_type == "CompGCN":
         logits = model(g, augmented_features, config.arg_argmentation_type, config.arg_argmentation_num, method)
 test_loss = F.cross_entropy(logits[idx_test], labels[idx_test])
 test_acc, test_micro_f1, test_macro_f1 = score(logits[idx_test], labels[idx_test])
