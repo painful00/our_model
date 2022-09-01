@@ -172,7 +172,10 @@ class HGT_AUG_P(nn.Module):
         super().__init__()
 
         if config.is_augmentation:
-            self.model = HGT(feature_sizes[category_index[target_category]], config.hidden_dim, label_num, config.num_heads, len(g1.etypes)+len(g2.etypes), len(g2.ntypes)+len(arg_graphs), config.num_layers, config.dropout, config.norm)
+            #self.model = HGT(feature_sizes[category_index[target_category]], config.hidden_dim, label_num, config.num_heads, len(g1.etypes)+len(g2.etypes), len(g2.ntypes)+len(arg_graphs), config.num_layers, config.dropout, config.norm)
+            self.model = HGT(feature_sizes[category_index[target_category]], config.hidden_dim, label_num,
+                             config.num_heads, len(g1.etypes), len(g1.ntypes),
+                             config.num_layers, config.dropout, config.norm)
 
         else:
             self.model = HGT(feature_sizes[category_index[target_category]], config.hidden_dim, label_num, config.num_heads, len(g2.etypes), len(g2.ntypes), config.num_layers, config.dropout, config.norm)
