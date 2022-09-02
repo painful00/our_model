@@ -26,7 +26,7 @@ from openhgnn import HAN
 
 
 
-model_type = "HGT"
+model_type = "CompGCN"
 dataset = "imdb"
 gpu = -1    #   -1:cpu    >0:gpu
 proDir = os.path.split(os.path.realpath(__file__))[0]
