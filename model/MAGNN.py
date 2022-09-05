@@ -58,14 +58,22 @@ class MAGNN_AUG(nn.Module):
                 if i == category_index[target_category]:
                     size = config.embedding_size * (len(config.arg_argmentation_type)) + feature_sizes[
                         category_index[target_category]]
-                self.look_up_table.append(nn.Linear(size, config.hidden_dim))
+                self.look_up_table.append(nn.Linear(size, config.num_heads*config.hidden_dim))
+                # if i == category_index[target_category]:
+                #     self.look_up_table.append(identical_map)
+                # else:
+                #     size_map = config.embedding_size * (len(config.arg_argmentation_type)) + feature_sizes[category_index[target_category]]
+                #     self.look_up_table.append(nn.Linear(size, size_map))
 
         else:
             for i, size in enumerate(feature_sizes):
+                # if i == category_index[target_category]:
+                #     self.look_up_table.append(identical_map)
+                # else:
+                #     self.look_up_table.append(nn.Linear(size, feature_sizes[category_index[target_category]]))
                 if i == category_index[target_category]:
-                    self.look_up_table.append(identical_map)
-                else:
-                    self.look_up_table.append(nn.Linear(size, feature_sizes[category_index[target_category]]))
+                    size = feature_sizes[category_index[target_category]]
+                self.look_up_table.append(nn.Linear(size, config.num_heads*config.hidden_dim))
 
 
     def forward(self, g_ori, augmentated_features, augmentated_types, augmentated_num, method):

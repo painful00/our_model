@@ -102,7 +102,7 @@ class CompGCN_AUG_P(nn.Module):
         super().__init__()
 
         if config.is_augmentation:
-            self.arg_num = 32
+            self.arg_num = 16
             #self.model = CompGCN(feature_sizes[category_index[target_category]], config.hidden_dim, label_num,
             #                      g2.etypes + g1.etypes, g2.num_nodes() + g1.num_nodes(),
             #                      len(g2.etypes) + len(g1.etypes), config.num_layers, config.comp_fn, config.dropout,

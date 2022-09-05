@@ -172,10 +172,24 @@ class HGT_AUG_P(nn.Module):
         super().__init__()
 
         if config.is_augmentation:
+            self.arg_num = 16
             #self.model = HGT(feature_sizes[category_index[target_category]], config.hidden_dim, label_num, config.num_heads, len(g1.etypes)+len(g2.etypes), len(g2.ntypes)+len(arg_graphs), config.num_layers, config.dropout, config.norm)
-            self.model = HGT(feature_sizes[category_index[target_category]], config.hidden_dim, label_num,
-                             config.num_heads, len(g1.etypes), len(g1.ntypes),
-                             config.num_layers, config.dropout, config.norm)
+            #self.model = HGT(feature_sizes[category_index[target_category]], config.hidden_dim, label_num,
+            #                 config.num_heads, len(g1.etypes), len(g1.ntypes),
+            #                 config.num_layers, config.dropout, config.norm)
+            # self.model1 = HGT(feature_sizes[category_index[target_category]], config.hidden_dim, self.arg_num,
+            #                 config.num_heads, len(g1.etypes), len(g1.ntypes),
+            #                 config.num_layers, config.dropout, config.norm)
+
+            self.model1 = HGT(feature_sizes[category_index[target_category]], config.hidden_dim, self.arg_num,
+                              4, len(g1.etypes), len(g1.ntypes),
+                              2, config.dropout, config.norm)
+
+            self.model2 = HGT(feature_sizes[category_index[target_category]]+self.arg_num, config.hidden_dim, label_num,
+                            config.num_heads, len(g2.etypes), len(g2.ntypes),
+                            config.num_layers, config.dropout, config.norm)
+
+
 
         else:
             self.model = HGT(feature_sizes[category_index[target_category]], config.hidden_dim, label_num, config.num_heads, len(g2.etypes), len(g2.ntypes), config.num_layers, config.dropout, config.norm)
@@ -193,7 +207,8 @@ class HGT_AUG_P(nn.Module):
             if i == category_index[target_category]:
                 self.look_up_table.append(identical_map)
             else:
-                self.look_up_table.append(nn.Linear(size, feature_sizes[category_index[target_category]]))
+                self.look_up_table.append(nn.Linear(size, feature_sizes[category_index[target_category]]+self.arg_num))
+
         if dataset == "yelp":
             self.look_up_table = [identical_map for _ in range(len(feature_sizes))]
 
@@ -201,20 +216,35 @@ class HGT_AUG_P(nn.Module):
     def forward(self, g_aug, g_ori):
         feat_dict = {}
         if self.config.is_augmentation:
+            # for ntype in g_aug.ntypes:
+            #     if ntype in self.category_index:
+            #         feat_dict[ntype] = self.look_up_table[self.category_index[ntype]](g_aug.ndata["h"][ntype])
+            #     else:
+            #         feat_dict[ntype] = g_aug.ndata["h"][ntype]
+            # logits1 = self.model(g_aug, feat_dict)[self.target_category]
+            #
+            # feat_dict = {}
+            # for ntype in g_ori.ntypes:
+            #     if ntype in self.category_index:
+            #         feat_dict[ntype] = self.look_up_table[self.category_index[ntype]](g_ori.ndata["h"][ntype])
+            # logits2 = self.model(g_ori, feat_dict)[self.target_category]
+            #
+            # logits = F.softmax(self.mapping(torch.cat((logits1,logits2), dim=-1)), dim=-1)
+
             for ntype in g_aug.ntypes:
-                if ntype in self.category_index:
-                    feat_dict[ntype] = self.look_up_table[self.category_index[ntype]](g_aug.ndata["h"][ntype])
-                else:
-                    feat_dict[ntype] = g_aug.ndata["h"][ntype]
-            logits1 = self.model(g_aug, feat_dict)[self.target_category]
+                feat_dict[ntype] = g_aug.ndata["h"][ntype]
+            logits1 = self.model1(g_aug, feat_dict)[self.target_category]
 
             feat_dict = {}
             for ntype in g_ori.ntypes:
-                if ntype in self.category_index:
+                if ntype == self.target_category:
+                    feat_dict[ntype] = torch.cat((g_ori.ndata["h"][ntype], logits1), dim=-1)
+                elif ntype in self.category_index:
                     feat_dict[ntype] = self.look_up_table[self.category_index[ntype]](g_ori.ndata["h"][ntype])
-            logits2 = self.model(g_ori, feat_dict)[self.target_category]
 
-            logits = F.softmax(self.mapping(torch.cat((logits1,logits2), dim=-1)), dim=-1)
+            logits2 = self.model2(g_ori, feat_dict)[self.target_category]
+
+            logits = logits2
 
 
         else:
