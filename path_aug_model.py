@@ -210,8 +210,8 @@ def path_augmentation_hgt(g, path_augmentation, config, target_category, edge_ty
 
     # augmentation
     hetero_dic = {}
-    for edge in edge_types:
-        hetero_dic[(edge_types[edge][0], edge, edge_types[edge][1])] = g[edge].edges()
+    # for edge in edge_types:
+    #     hetero_dic[(edge_types[edge][0], edge, edge_types[edge][1])] = g[edge].edges()
     for ind, item in enumerate(augmentated_graphs):
         adj_mat = sparse.coo_matrix(item)
         hetero_dic[(target_category, target_category + "-" + target_category + str(ind), target_category + str(ind))] = (adj_mat.row, adj_mat.col)

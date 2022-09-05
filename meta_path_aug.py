@@ -26,7 +26,7 @@ from openhgnn import HAN
 
 
 
-model_type = "CompGCN"
+model_type = "HGT"
 dataset = "imdb"
 gpu = -1    #   -1:cpu    >0:gpu
 proDir = os.path.split(os.path.realpath(__file__))[0]
@@ -133,7 +133,7 @@ else:
     elif model_type == "HPN":
         model = HPN_AUG_P(config, new_g, g, feature_sizes, category_index, target_category, label_num, dataset, augmentated_graphs, meta_paths)
     elif model_type == "CompGCN":
-        model = SimpleHGN_AUG_P(config, new_g, g, feature_sizes, category_index, target_category, label_num, dataset)
+        model = CompGCN_AUG_P(config, new_g, g, feature_sizes, category_index, target_category, label_num, dataset)
 
 optimizer = torch.optim.AdamW(model.parameters(), lr=config.lr, weight_decay=config.weight_decay)
 stopper = EarlyStopping(patience=config.patience)
