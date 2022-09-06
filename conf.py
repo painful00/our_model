@@ -3,7 +3,7 @@ import numpy as np
 import torch
 
 class Config(object):
-    def __init__(self, file_path, model, dataset, gpu):
+    def __init__(self, file_path, model, dataset, gpu, augmenter):
         conf = configparser.ConfigParser()
         if gpu == -1:
             self.device = torch.device('cpu')
@@ -118,27 +118,33 @@ class Config(object):
 
 
         # augmentation generator
-        # structure
-        self.embedding_size = conf.getint('Augmentation', 'embedding_size')
-        self.arg_latent_size = conf.getint('Augmentation', 'latent_size')
-        self.arg_argmentation_type = eval(conf.get('Augmentation', 'argmentation_type'))
-        self.arg_argmentation_num = conf.getint('Augmentation', 'argmentation_num')
         self.is_augmentation = conf.getboolean('Augmentation', 'is_augmentation')
-        self.arg_pretrain_lr = conf.getfloat('Augmentation', 'pretrain_lr')
-        self.arg_pretrain_epochs = conf.getint('Augmentation', 'pretrain_epochs')
-        self.arg_batch_size = conf.getint('Augmentation', 'batch_size')
+        if augmenter == "augmenter":
+            # structure
+            self.embedding_size = conf.getint('Augmentation', 'embedding_size')
+            self.arg_latent_size = conf.getint('Augmentation', 'latent_size')
+            self.arg_argmentation_type = eval(conf.get('Augmentation', 'argmentation_type'))
+            self.arg_argmentation_num = conf.getint('Augmentation', 'argmentation_num')
+            self.arg_pretrain_lr = conf.getfloat('Augmentation', 'pretrain_lr')
+            self.arg_pretrain_epochs = conf.getint('Augmentation', 'pretrain_epochs')
+            self.arg_batch_size = conf.getint('Augmentation', 'batch_size')
 
-        # path
-        self.resolution = conf.getint('Augmentation', 'resolution')
-        self.threshold_sba = conf.getfloat('Augmentation', 'threshold_sba')
-        self.threshold_usvt = conf.getfloat('Augmentation', 'threshold_usvt')
-        self.alpha = conf.getfloat('Augmentation', 'alpha')
-        self.beta = conf.getfloat('Augmentation', 'beta')
-        self.gamma = conf.getfloat('Augmentation', 'gamma')
-        self.inner_iters = conf.getint('Augmentation', 'inner_iters')
-        self.outer_iters = conf.getint('Augmentation', 'outer_iters')
-        self.n_trials = conf.getint('Augmentation', 'n_trials')
-        self.argmentation_path = eval(conf.get('Augmentation', 'argmentation_path'))
-        self.argmentation_intra_graph_num = conf.getint('Augmentation', 'argmentation_intra_graph_num')
-        self.argmentation_inter_graph_num = conf.getint('Augmentation', 'argmentation_inter_graph_num')
+            # path
+            self.resolution = conf.getint('Augmentation', 'resolution')
+            self.threshold_sba = conf.getfloat('Augmentation', 'threshold_sba')
+            self.threshold_usvt = conf.getfloat('Augmentation', 'threshold_usvt')
+            self.alpha = conf.getfloat('Augmentation', 'alpha')
+            self.beta = conf.getfloat('Augmentation', 'beta')
+            self.gamma = conf.getfloat('Augmentation', 'gamma')
+            self.inner_iters = conf.getint('Augmentation', 'inner_iters')
+            self.outer_iters = conf.getint('Augmentation', 'outer_iters')
+            self.n_trials = conf.getint('Augmentation', 'n_trials')
+            self.argmentation_path = eval(conf.get('Augmentation', 'argmentation_path'))
+            self.argmentation_intra_graph_num = conf.getint('Augmentation', 'argmentation_intra_graph_num')
+            self.argmentation_inter_graph_num = conf.getint('Augmentation', 'argmentation_inter_graph_num')
+
+        elif augmenter == "dropedge":
+            self.dropedge_rate = conf.getfloat('DropEdge', 'dropedge_rate')
+
+
 
