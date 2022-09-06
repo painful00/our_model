@@ -41,17 +41,41 @@ class MAGNN_AUG(nn.Module):
         self.category_index = category_index
         self.config = config
 
-        self.model = MAGNN(ntypes=ntypes,
-                           h_feats=config.hidden_dim,
-                           inter_attn_feats=config.inter_attn_feats,
-                           num_heads=config.num_heads,
-                           num_classes=label_num,
-                           num_layers=config.num_layers,
-                           metapath_list=metapath_list,
-                           edge_type_list=edge_type_list,
-                           dropout_rate=config.dropout,
-                           encoder_type=config.encoder_type,
-                           metapath_idx_dict=metapath_idx_dict)
+        # self.model = MAGNN(ntypes=ntypes,
+        #                    h_feats=config.hidden_dim,
+        #                    inter_attn_feats=config.inter_attn_feats,
+        #                    num_heads=config.num_heads,
+        #                    num_classes=label_num,
+        #                    num_layers=config.num_layers,
+        #                    metapath_list=metapath_list,
+        #                    edge_type_list=edge_type_list,
+        #                    dropout_rate=config.dropout,
+        #                    encoder_type=config.encoder_type,
+        #                    metapath_idx_dict=metapath_idx_dict)
+        if config.is_augmentation:
+            self.model = MAGNN(ntypes=ntypes,
+                               h_feats=feature_sizes[category_index[target_category]]+config.embedding_size * (len(config.arg_argmentation_type)),
+                               inter_attn_feats=config.inter_attn_feats,
+                               num_heads=1,
+                               num_classes=label_num,
+                               num_layers=config.num_layers,
+                               metapath_list=metapath_list,
+                               edge_type_list=edge_type_list,
+                               dropout_rate=config.dropout,
+                               encoder_type=config.encoder_type,
+                               metapath_idx_dict=metapath_idx_dict)
+        else:
+            self.model = MAGNN(ntypes=ntypes,
+                               h_feats=feature_sizes[category_index[target_category]],
+                               inter_attn_feats=config.inter_attn_feats,
+                               num_heads=1,
+                               num_classes=label_num,
+                               num_layers=config.num_layers,
+                               metapath_list=metapath_list,
+                               edge_type_list=edge_type_list,
+                               dropout_rate=config.dropout,
+                               encoder_type=config.encoder_type,
+                               metapath_idx_dict=metapath_idx_dict)
 
         if config.is_augmentation:
             for i, size in enumerate(feature_sizes):
@@ -67,13 +91,13 @@ class MAGNN_AUG(nn.Module):
 
         else:
             for i, size in enumerate(feature_sizes):
-                # if i == category_index[target_category]:
-                #     self.look_up_table.append(identical_map)
-                # else:
-                #     self.look_up_table.append(nn.Linear(size, feature_sizes[category_index[target_category]]))
                 if i == category_index[target_category]:
-                    size = feature_sizes[category_index[target_category]]
-                self.look_up_table.append(nn.Linear(size, config.num_heads*config.hidden_dim))
+                    self.look_up_table.append(identical_map)
+                else:
+                    self.look_up_table.append(nn.Linear(size, feature_sizes[category_index[target_category]]))
+                # if i == category_index[target_category]:
+                #     size = feature_sizes[category_index[target_category]]
+                # self.look_up_table.append(nn.Linear(size, config.num_heads*config.hidden_dim))
 
 
     def forward(self, g_ori, augmentated_features, augmentated_types, augmentated_num, method):
