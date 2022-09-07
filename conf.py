@@ -119,7 +119,9 @@ class Config(object):
 
         # augmentation generator
         self.is_augmentation = conf.getboolean('Augmentation', 'is_augmentation')
-        if augmenter == "augmenter":
+        self.arg_argmentation_type = []
+        self.arg_argmentation_num = 0
+        if augmenter == "STR_META":
             # structure
             self.embedding_size = conf.getint('Augmentation', 'embedding_size')
             self.arg_latent_size = conf.getint('Augmentation', 'latent_size')
@@ -146,5 +148,11 @@ class Config(object):
         elif augmenter == "dropedge":
             self.dropedge_rate = conf.getfloat('DropEdge', 'dropedge_rate')
 
-
+        elif augmenter == "LA":
+            self.arg_batch_size = conf.getint('LA', 'batch_size')
+            self.embedding_size = conf.getint('LA', 'embedding_size')
+            self.arg_latent_size = conf.getint('LA', 'latent_size')
+            self.arg_pretrain_lr = conf.getfloat('LA', 'pretrain_lr')
+            self.arg_pretrain_epochs = conf.getint('LA', 'pretrain_epochs')
+            self.arg_argmentation_num = conf.getint('LA', 'arg_argmentation_num')
 

@@ -22,13 +22,13 @@ from model.SimpleHGN import SimpleHGN_AUG
 from model.HGT import HGT_AUG
 from model.HPN import HPN_AUG
 from model.CompGCN import CompGCN_AUG
-from augmenter import DropEdge
+from augmenter import DropEdge, LA, LA_Train
 
 
 # conf setting
 model_type = "HAN"
-dataset = "yelp"
-argmenter = "dropedge"
+dataset = "imdb"
+argmenter = "LA"
 gpu = -1    #   -1:cpu    >0:gpu
 proDir = os.path.split(os.path.realpath(__file__))[0]
 configPath = os.path.join(proDir, "conf.ini")
@@ -76,6 +76,22 @@ if dataset == "acm":
         e2 = e.split('-')[1]
         edge_types[e] = [e1, e2]
 
+# augmented graph
+if argmenter == "dropedge":
+    new_g = g
+elif argmenter == "LA":
+    feature_generator = LA_Train(config, config.device, g, category_index, feature_sizes, edge_types, dataset)
+    new_g = LA(g, feature_generator, config.arg_argmentation_num, target_category, config.arg_latent_size, edge_types)
+
+# augmented graph feature
+target_feature_size = new_g.ndata["h"][target_category].size()[1]
+feature_sizes = []
+for cat in category_index:
+    feature_sizes.append(new_g.ndata['h'][cat].size()[1])
+
+
+
+
 # model
 if model_type == "HAN":
     mapping_size = 256
@@ -105,18 +121,20 @@ if gpu >= 0:
     labels.to("cuda:"+gpu)
 
 
+
 # train
 augmented_features = []
 method = "mean"
-config.arg_argmentation_type = []
-config.arg_argmentation_num = 0
 for epoch in range(config.max_epoch):
     model.train()
     if argmenter == "dropedge":
         new_g = DropEdge(config.dropedge_rate, g, edge_types, target_category)
+    elif argmenter == "LA":
+        new_g = LA(g, feature_generator, config.arg_argmentation_num, target_category, config.arg_latent_size,edge_types)
 
     if model_type == "HAN":
-        logits = model(new_g, g.ndata["h"])[target_category]
+        logits = model(new_g, new_g.ndata["h"])[target_category]
+
     else:
         logits = model(new_g, augmented_features, config.arg_argmentation_type, config.arg_argmentation_num, method)
     loss = F.cross_entropy(logits[idx_train], labels[idx_train])
@@ -131,9 +149,9 @@ for epoch in range(config.max_epoch):
     model.eval()
     with torch.no_grad():
         if model_type == "HAN":
-            logits = model(g, g.ndata["h"])[target_category]
+            logits = model(new_g, new_g.ndata["h"])[target_category]
         else:
-            logits = model(g, augmented_features, config.arg_argmentation_type, config.arg_argmentation_num, method)
+            logits = model(new_g, augmented_features, config.arg_argmentation_type, config.arg_argmentation_num, method)
     val_loss = F.cross_entropy(logits[idx_val], labels[idx_val])
     val_acc, val_micro_f1, val_macro_f1 = score(logits[idx_val], labels[idx_val])
 
@@ -155,9 +173,9 @@ stopper.load_checkpoint(model)
 model.eval()
 with torch.no_grad():
     if model_type == "HAN":
-        logits = model(g, g.ndata["h"])[target_category]
+        logits = model(new_g, new_g.ndata["h"])[target_category]
     else:
-        logits = model(g, augmented_features, config.arg_argmentation_type, config.arg_argmentation_num, method)
+        logits = model(new_g, augmented_features, config.arg_argmentation_type, config.arg_argmentation_num, method)
 test_loss = F.cross_entropy(logits[idx_test], labels[idx_test])
 test_acc, test_micro_f1, test_macro_f1 = score(logits[idx_test], labels[idx_test])
 print('Test loss {:.4f} | Test Micro f1 {:.4f} | Test Macro f1 {:.4f}'.format(test_loss.item(), test_micro_f1, test_macro_f1))

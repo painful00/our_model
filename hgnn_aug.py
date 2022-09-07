@@ -25,14 +25,14 @@ from model.CompGCN import CompGCN_AUG
 
 
 # conf setting
-model_type = "MAGNN"
-dataset = "imdb"
+model_type = "HPN"
+dataset = "yelp"
 gpu = -1    #   -1:cpu    >0:gpu
 proDir = os.path.split(os.path.realpath(__file__))[0]
 configPath = os.path.join(proDir, "conf.ini")
 conf_path = os.path.abspath(configPath)
 argmenter = "STR_META"
-config = Config(file_path=conf_path, model=model_type, dataset=dataset, gpu=gpu, argmenter=argmenter)
+config = Config(file_path=conf_path, model=model_type, dataset=dataset, gpu=gpu, augmenter=argmenter)
 
 
 # set random seed
