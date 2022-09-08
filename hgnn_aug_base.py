@@ -22,13 +22,13 @@ from model.SimpleHGN import SimpleHGN_AUG
 from model.HGT import HGT_AUG
 from model.HPN import HPN_AUG
 from model.CompGCN import CompGCN_AUG
-from augmenter import DropEdge, LA, LA_Train
+from augmenter import DropEdge, LA, LA_Train, NodeAug
 
 
 # conf setting
 model_type = "HAN"
 dataset = "imdb"
-argmenter = "LA"
+argmenter = "NodeAug"
 gpu = -1    #   -1:cpu    >0:gpu
 proDir = os.path.split(os.path.realpath(__file__))[0]
 configPath = os.path.join(proDir, "conf.ini")
@@ -76,19 +76,14 @@ if dataset == "acm":
         e2 = e.split('-')[1]
         edge_types[e] = [e1, e2]
 
-# augmented graph
-if argmenter == "dropedge":
-    new_g = g
-elif argmenter == "LA":
+# augmented graph feature
+if argmenter == "LA":
     feature_generator = LA_Train(config, config.device, g, category_index, feature_sizes, edge_types, dataset)
     new_g = LA(g, feature_generator, config.arg_argmentation_num, target_category, config.arg_latent_size, edge_types)
-
-# augmented graph feature
-target_feature_size = new_g.ndata["h"][target_category].size()[1]
-feature_sizes = []
-for cat in category_index:
-    feature_sizes.append(new_g.ndata['h'][cat].size()[1])
-
+    target_feature_size = new_g.ndata["h"][target_category].size()[1]
+    feature_sizes = []
+    for cat in category_index:
+        feature_sizes.append(new_g.ndata['h'][cat].size()[1])
 
 
 
@@ -100,15 +95,25 @@ if model_type == "HAN":
     else:
         model = HAN(meta_paths, [target_category], target_feature_size, config.hidden_dim, label_num, config.num_heads, config.dropout)
 elif model_type == "MAGNN":
+    config.is_augmentation=True
     model = MAGNN_AUG(config, label_num, g, dataset, target_category, feature_sizes, category_index)
+    config.is_augmentation = False
 elif model_type == "SimpleHGN":
+    config.is_augmentation = True
     model = SimpleHGN_AUG(config, g, feature_sizes, category_index, target_category, label_num, dataset)
+    config.is_augmentation = False
 elif model_type == "HGT":
+    config.is_augmentation = True
     model = HGT_AUG(config, g, feature_sizes, category_index, target_category, label_num, dataset)
+    config.is_augmentation = False
 elif model_type == "HPN":
+    config.is_augmentation = True
     model = HPN_AUG(config, g, feature_sizes, category_index, target_category, label_num, dataset, meta_paths)
+    config.is_augmentation = False
 elif model_type == "CompGCN":
+    config.is_augmentation = True
     model = CompGCN_AUG(config, g, feature_sizes, category_index, target_category, label_num, dataset)
+    config.is_augmentation = False
 
 optimizer = torch.optim.AdamW(model.parameters(), lr=config.lr, weight_decay=config.weight_decay)
 stopper = EarlyStopping(patience=config.patience)
@@ -131,13 +136,28 @@ for epoch in range(config.max_epoch):
         new_g = DropEdge(config.dropedge_rate, g, edge_types, target_category)
     elif argmenter == "LA":
         new_g = LA(g, feature_generator, config.arg_argmentation_num, target_category, config.arg_latent_size,edge_types)
+    elif argmenter == "NodeAug":
+        perturb_id = random.randint(0, g.num_nodes(target_category)-1)
+        new_g = NodeAug(g, target_category, meta_paths, edge_types, perturb_id)
 
-    if model_type == "HAN":
-        logits = model(new_g, new_g.ndata["h"])[target_category]
-
+    if argmenter == "NodeAug":
+        if model_type == "HAN":
+            logits1 = model(new_g, new_g.ndata["h"])[target_category]
+            with torch.no_grad():
+                logits2 = model(g, g.ndata["h"])[target_category]
+            logits = model(g, g.ndata["h"])[target_category]
+        else:
+            logits1 = model(new_g, augmented_features, config.arg_argmentation_type, config.arg_argmentation_num, method)
+            with torch.no_grad():
+                logits2 = model(g, augmented_features, config.arg_argmentation_type, config.arg_argmentation_num, method)
+            logits = model(g, g.ndata["h"])[target_category]
+        loss = F.cross_entropy(logits[idx_train], labels[idx_train]) + F.kl_div(F.log_softmax(logits1[perturb_id], dim=-1), F.softmax(logits2[perturb_id], dim=-1))
     else:
-        logits = model(new_g, augmented_features, config.arg_argmentation_type, config.arg_argmentation_num, method)
-    loss = F.cross_entropy(logits[idx_train], labels[idx_train])
+        if model_type == "HAN":
+            logits = model(new_g, new_g.ndata["h"])[target_category]
+        else:
+            logits = model(new_g, augmented_features, config.arg_argmentation_type, config.arg_argmentation_num, method)
+        loss = F.cross_entropy(logits[idx_train], labels[idx_train])
 
     optimizer.zero_grad()
     loss.backward()
@@ -148,10 +168,16 @@ for epoch in range(config.max_epoch):
     # evaluation
     model.eval()
     with torch.no_grad():
-        if model_type == "HAN":
-            logits = model(new_g, new_g.ndata["h"])[target_category]
+        if argmenter == "NodeAug":
+            if model_type == "HAN":
+                logits = model(g, g.ndata["h"])[target_category]
+            else:
+                logits = model(g, augmented_features, config.arg_argmentation_type, config.arg_argmentation_num, method)
         else:
-            logits = model(new_g, augmented_features, config.arg_argmentation_type, config.arg_argmentation_num, method)
+            if model_type == "HAN":
+                logits = model(new_g, new_g.ndata["h"])[target_category]
+            else:
+                logits = model(new_g, augmented_features, config.arg_argmentation_type, config.arg_argmentation_num, method)
     val_loss = F.cross_entropy(logits[idx_val], labels[idx_val])
     val_acc, val_micro_f1, val_macro_f1 = score(logits[idx_val], labels[idx_val])
 
@@ -172,10 +198,16 @@ for epoch in range(config.max_epoch):
 stopper.load_checkpoint(model)
 model.eval()
 with torch.no_grad():
-    if model_type == "HAN":
-        logits = model(new_g, new_g.ndata["h"])[target_category]
+    if argmenter == "NodeAug":
+        if model_type == "HAN":
+            logits = model(g, g.ndata["h"])[target_category]
+        else:
+            logits = model(g, augmented_features, config.arg_argmentation_type, config.arg_argmentation_num, method)
     else:
-        logits = model(new_g, augmented_features, config.arg_argmentation_type, config.arg_argmentation_num, method)
+        if model_type == "HAN":
+            logits = model(new_g, new_g.ndata["h"])[target_category]
+        else:
+            logits = model(new_g, augmented_features, config.arg_argmentation_type, config.arg_argmentation_num, method)
 test_loss = F.cross_entropy(logits[idx_test], labels[idx_test])
 test_acc, test_micro_f1, test_macro_f1 = score(logits[idx_test], labels[idx_test])
 print('Test loss {:.4f} | Test Micro f1 {:.4f} | Test Macro f1 {:.4f}'.format(test_loss.item(), test_micro_f1, test_macro_f1))
