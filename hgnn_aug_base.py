@@ -22,13 +22,13 @@ from model.SimpleHGN import SimpleHGN_AUG
 from model.HGT import HGT_AUG
 from model.HPN import HPN_AUG
 from model.CompGCN import CompGCN_AUG
-from augmenter import DropEdge, LA, LA_Train, NodeAug
+from augmenter import DropEdge, LA, LA_Train, NodeAug, NASA, NASA_Loss
 
 
 # conf setting
 model_type = "HAN"
 dataset = "imdb"
-argmenter = "NodeAug"
+argmenter = "NASA"
 gpu = -1    #   -1:cpu    >0:gpu
 proDir = os.path.split(os.path.realpath(__file__))[0]
 configPath = os.path.join(proDir, "conf.ini")
@@ -95,26 +95,40 @@ if model_type == "HAN":
     else:
         model = HAN(meta_paths, [target_category], target_feature_size, config.hidden_dim, label_num, config.num_heads, config.dropout)
 elif model_type == "MAGNN":
-    config.is_augmentation=True
-    model = MAGNN_AUG(config, label_num, g, dataset, target_category, feature_sizes, category_index)
-    config.is_augmentation = False
+    if argmenter == "LA":
+        config.is_augmentation=True
+        model = MAGNN_AUG(config, label_num, g, dataset, target_category, feature_sizes, category_index)
+        config.is_augmentation = False
+    else:
+        model = MAGNN_AUG(config, label_num, g, dataset, target_category, feature_sizes, category_index)
 elif model_type == "SimpleHGN":
-    config.is_augmentation = True
-    model = SimpleHGN_AUG(config, g, feature_sizes, category_index, target_category, label_num, dataset)
-    config.is_augmentation = False
+    if argmenter == "LA":
+        config.is_augmentation = True
+        model = SimpleHGN_AUG(config, g, feature_sizes, category_index, target_category, label_num, dataset)
+        config.is_augmentation = False
+    else:
+        model = SimpleHGN_AUG(config, g, feature_sizes, category_index, target_category, label_num, dataset)
 elif model_type == "HGT":
-    config.is_augmentation = True
-    model = HGT_AUG(config, g, feature_sizes, category_index, target_category, label_num, dataset)
-    config.is_augmentation = False
+    if argmenter == "LA":
+        config.is_augmentation = True
+        model = HGT_AUG(config, g, feature_sizes, category_index, target_category, label_num, dataset)
+        config.is_augmentation = False
+    else:
+        model = HGT_AUG(config, g, feature_sizes, category_index, target_category, label_num, dataset)
 elif model_type == "HPN":
-    config.is_augmentation = True
-    model = HPN_AUG(config, g, feature_sizes, category_index, target_category, label_num, dataset, meta_paths)
-    config.is_augmentation = False
+    if argmenter == "LA":
+        config.is_augmentation = True
+        model = HPN_AUG(config, g, feature_sizes, category_index, target_category, label_num, dataset, meta_paths)
+        config.is_augmentation = False
+    else:
+        model = HPN_AUG(config, g, feature_sizes, category_index, target_category, label_num, dataset, meta_paths)
 elif model_type == "CompGCN":
-    config.is_augmentation = True
-    model = CompGCN_AUG(config, g, feature_sizes, category_index, target_category, label_num, dataset)
-    config.is_augmentation = False
-
+    if argmenter == "LA":
+        config.is_augmentation = True
+        model = CompGCN_AUG(config, g, feature_sizes, category_index, target_category, label_num, dataset)
+        config.is_augmentation = False
+    else:
+        model = CompGCN_AUG(config, g, feature_sizes, category_index, target_category, label_num, dataset)
 optimizer = torch.optim.AdamW(model.parameters(), lr=config.lr, weight_decay=config.weight_decay)
 stopper = EarlyStopping(patience=config.patience)
 if gpu >= 0:
@@ -139,6 +153,9 @@ for epoch in range(config.max_epoch):
     elif argmenter == "NodeAug":
         perturb_id = random.randint(0, g.num_nodes(target_category)-1)
         new_g = NodeAug(g, target_category, meta_paths, edge_types, perturb_id)
+    elif argmenter == "NASA":
+        perturb_id = random.randint(0, g.num_nodes(target_category) - 1)
+        new_g = NASA(g, target_category, meta_paths, edge_types, perturb_id)
 
     if argmenter == "NodeAug":
         if model_type == "HAN":
@@ -150,8 +167,17 @@ for epoch in range(config.max_epoch):
             logits1 = model(new_g, augmented_features, config.arg_argmentation_type, config.arg_argmentation_num, method)
             with torch.no_grad():
                 logits2 = model(g, augmented_features, config.arg_argmentation_type, config.arg_argmentation_num, method)
-            logits = model(g, g.ndata["h"])[target_category]
+            logits = model(g, augmented_features, config.arg_argmentation_type, config.arg_argmentation_num, method)
         loss = F.cross_entropy(logits[idx_train], labels[idx_train]) + F.kl_div(F.log_softmax(logits1[perturb_id], dim=-1), F.softmax(logits2[perturb_id], dim=-1))
+
+    elif argmenter == "NASA":
+        if model_type == "HAN":
+            logits = model(new_g, new_g.ndata["h"])[target_category]
+        else:
+            logits = model(new_g, augmented_features, config.arg_argmentation_type, config.arg_argmentation_num, method)
+        loss_sup = F.cross_entropy(logits[idx_train], labels[idx_train])
+        loss_cr = NASA_Loss(g, logits, idx_train, idx_val, idx_test, meta_paths)
+        loss = loss_sup + 0.1 * loss_cr
     else:
         if model_type == "HAN":
             logits = model(new_g, new_g.ndata["h"])[target_category]

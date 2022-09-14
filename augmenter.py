@@ -234,6 +234,90 @@ def NodeAug(g, target_category, meta_path_dic, edge_types, node_id):
 
     return new_g
 
+def NASA(g, target_category, meta_path_dic, edge_types, node_id):
+    neighbor_1 = {}
+    neighbor_2 = {}
+    for edge in edge_types:
+        node_type1 = edge_types[edge][0]
+        node_type2 = edge_types[edge][1]
 
+        if node_type1 == target_category:
+            # 1-order neighborhood
+            adj_row = torch.FloatTensor(g[edge].adj(scipy_fmt='coo').toarray())[node_id]
+            neighbor_1[node_type2] = list(np.where(adj_row)[0])
 
+            # 2-order neighborhood
+            adj_row = dgl.metapath_reachable_graph(g, [node_type1+"-"+node_type2, node_type2+"-"+node_type1]).adj(scipy_fmt='coo').toarray()[node_id]
+            neighbor_nodes = list(np.where(adj_row)[0])
+            nei_adj = torch.FloatTensor(g[edge].adj(scipy_fmt='coo').toarray())[neighbor_nodes]
+            nei_adj = nei_adj.sum(dim=0)
+            adj_row = torch.FloatTensor(g[edge].adj(scipy_fmt='coo').toarray())[node_id]
+            potention_neighbor = torch.where(adj_row > 0, 0, nei_adj)
+            potention_neighbor = torch.where(potention_neighbor > 0, 1, 0)
+            neighbor_2[node_type2] = list(np.where(potention_neighbor)[0])
 
+    hetero_dic = {}
+
+    perturb_pro = 0.1
+    for nei_type in neighbor_1:
+        if len(neighbor_2[nei_type]) > 0:
+            adj_ori = torch.FloatTensor(g[target_category+"-"+nei_type].adj(scipy_fmt='coo').toarray())[node_id]
+            p = torch.Tensor(np.array([perturb_pro])).repeat(adj_ori.size())
+            p_mod = torch.bernoulli(p)
+            p_mod = torch.where(adj_ori > 0, p_mod, 0)
+            sample_num = int(p_mod.sum())
+            if sample_num > 0:
+                if len(neighbor_2[nei_type]) >= sample_num:
+                    sample_neighbor = np.random.choice(neighbor_2[nei_type], sample_num, replace=False)
+                else:
+                    sample_neighbor = np.random.choice(neighbor_2[nei_type], sample_num, replace=True)
+                adj_new = torch.FloatTensor(g[target_category+"-"+nei_type].adj(scipy_fmt='coo').toarray())
+                adj_new[node_id] = adj_new[node_id] - p_mod
+                adj_add = [0 for _ in range(adj_new.size()[1])]
+                for ind in sample_neighbor:
+                    adj_add[ind] = 1
+                adj_add = torch.Tensor(np.array(adj_add))
+                adj_new[node_id] = adj_new[node_id] + adj_add
+            else:
+                adj_new = torch.FloatTensor(g[target_category + "-" + nei_type].adj(scipy_fmt='coo').toarray())
+        else:
+            adj_new = torch.FloatTensor(g[target_category+"-"+nei_type].adj(scipy_fmt='coo').toarray())
+
+        adj_new = sparse.coo_matrix(adj_new)
+        hetero_dic[(target_category, target_category + "-" + nei_type, nei_type)] = (adj_new.row, adj_new.col)
+        hetero_dic[(nei_type, nei_type + "-" + target_category, target_category)] = (adj_new.col, adj_new.row)
+
+    new_g = dgl.heterograph(hetero_dic)
+    for nodetype in g.ntypes:
+        new_g.nodes[nodetype].data["h"] = g.ndata["h"][nodetype]
+
+    return new_g
+
+def NASA_Loss(g, predict, train_idx, val_idx, test_idx, meta_path_dic):
+    sharp_rate = 1
+    loss = 0
+    batch_size = 10
+    val_idx = list(val_idx.numpy())
+    test_idx = list(test_idx.numpy())
+    predict = F.softmax(predict)
+    for meta_path in meta_path_dic:
+        adj = torch.Tensor(dgl.metapath_reachable_graph(g, meta_path_dic[meta_path]).adj(scipy_fmt='coo').toarray())
+        degree = (1.0 / adj.sum(dim=1)).view(-1, 1).repeat(1, adj.size()[0])
+        degree = torch.where(degree!=degree, 0, degree)
+        adj = adj.mul(degree)
+        y = torch.mm(adj, predict)
+        y_sharp = torch.pow(y, sharp_rate)
+        y_sum = (1.0 / y_sharp.sum(dim=1)).view(-1, 1).repeat(1, y_sharp.size()[1])
+        p = y_sharp.mul(y_sum)
+        p = torch.where(p!=p, 0, p)
+        sample_pooling = test_idx + val_idx
+        sample_result = np.random.choice(sample_pooling, batch_size)
+        for ind in sample_result:
+            adj_row = dgl.metapath_reachable_graph(g, meta_path_dic[meta_path]).adj(scipy_fmt='coo').toarray()[ind]
+            nei = list(np.where(adj_row)[0])
+            for n in nei:
+                loss = loss + F.kl_div(F.log_softmax(p[ind], dim=-1), F.softmax(predict[n], dim=-1))
+
+    loss = loss / batch_size / len(meta_path)
+
+    return loss
