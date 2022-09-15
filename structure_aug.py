@@ -13,12 +13,12 @@ from conf import Config
 
 from tqdm import trange
 
-dataset = "acm"
+dataset = "yelp"
 gpu = -1    #   -1:cpu    >0:gpu
 proDir = os.path.split(os.path.realpath(__file__))[0]
 configPath = os.path.join(proDir, "conf.ini")
 conf_path = os.path.abspath(configPath)
-config = Config(file_path=conf_path, model=None, dataset=dataset, gpu=gpu)
+config = Config(file_path=conf_path, model=None, dataset=dataset, gpu=gpu, augmenter="STR_META")
 
 torch.manual_seed(config.seed)
 if torch.cuda.is_available():

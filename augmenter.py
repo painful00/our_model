@@ -13,6 +13,8 @@ from cvae_model import VAE
 import torch.optim as optim
 import os
 import random
+from conf import Config
+
 
 
 
@@ -321,3 +323,38 @@ def NASA_Loss(g, predict, train_idx, val_idx, test_idx, meta_path_dic):
     loss = loss / batch_size / len(meta_path)
 
     return loss
+
+
+def GAUG(g, target_category, meta_path_dic, edge_types, cvae, category):
+    hetero_dic = {}
+    loss = 0
+    for edge in edge_types:
+        node_type1 = edge_types[edge][0]
+        node_type2 = edge_types[edge][1]
+
+        if node_type1 == target_category:
+            source_embedding = cvae.look_up_table[category[node_type1]](g.ndata["h"][node_type1])
+            dest_embedding = cvae.look_up_table[category[node_type2]](g.ndata["h"][node_type2])
+
+            M = F.sigmoid(torch.mm(source_embedding, dest_embedding.T))
+            adj_ori = torch.FloatTensor(g[edge].adj(scipy_fmt='coo').toarray())
+            P = 0.999 * adj_ori + 0.001 * M
+
+            G = 0.001 * torch.FloatTensor(np.random.gumbel(loc=0.0, scale=1.0, size=(P.size()[0],P.size()[1])))
+            A = torch.floor(1 / (torch.exp(-(torch.log(P) + G)/1) + 1) + 1/2)
+
+            # adj_new = sparse.coo_matrix(A)
+            # hetero_dic[(node_type1, node_type1 + "-" + node_type2, node_type2)] = (adj_new.row, adj_new.col)
+            # hetero_dic[(node_type2, node_type2 + "-" + node_type1, node_type1)] = (adj_new.col, adj_new.row)
+            loss = loss + F.binary_cross_entropy(A, adj_ori, reduction="mean")
+
+    # num_nodes_dict = {}
+    # for nt in g.ntypes:
+    #     num_nodes_dict[nt] = g.num_nodes(nt)
+    # new_g = dgl.heterograph(hetero_dic, num_nodes_dict)
+    # for nodetype in g.ntypes:
+    #     new_g.nodes[nodetype].data["h"] = g.ndata["h"][nodetype]
+
+    new_g = g
+
+    return new_g, loss

@@ -22,13 +22,13 @@ from model.SimpleHGN import SimpleHGN_AUG
 from model.HGT import HGT_AUG
 from model.HPN import HPN_AUG
 from model.CompGCN import CompGCN_AUG
-from augmenter import DropEdge, LA, LA_Train, NodeAug, NASA, NASA_Loss
+from augmenter import DropEdge, LA, LA_Train, NodeAug, NASA, NASA_Loss, GAUG
 
 
 # conf setting
 model_type = "HAN"
-dataset = "imdb"
-argmenter = "NASA"
+dataset = "acm"
+argmenter = "GAUG"
 gpu = -1    #   -1:cpu    >0:gpu
 proDir = os.path.split(os.path.realpath(__file__))[0]
 configPath = os.path.join(proDir, "conf.ini")
@@ -85,6 +85,17 @@ if argmenter == "LA":
     for cat in category_index:
         feature_sizes.append(new_g.ndata['h'][cat].size()[1])
 
+# cvae
+if argmenter == "GAUG":
+    path = "./output/rcvae_" + dataset + ".pkl"
+    embedding_size = 128
+    latent_size = 50
+    if os.path.exists(path):
+        augmentation_generator = VAE(embedding_size, latent_size, category_index, feature_sizes, e_type_index, has_feature)
+        augmentation_generator.load_state_dict(torch.load(path))
+    else:
+        augmentation_generator = VAE(embedding_size, latent_size, category_index, feature_sizes, e_type_index, has_feature)
+        print("Augmentation generator is not trained")
 
 
 # model
@@ -156,6 +167,8 @@ for epoch in range(config.max_epoch):
     elif argmenter == "NASA":
         perturb_id = random.randint(0, g.num_nodes(target_category) - 1)
         new_g = NASA(g, target_category, meta_paths, edge_types, perturb_id)
+    elif argmenter == "GAUG":
+        new_g, loss_nor = GAUG(g, target_category, meta_paths, edge_types, augmentation_generator, category_index)
 
     if argmenter == "NodeAug":
         if model_type == "HAN":
@@ -178,6 +191,13 @@ for epoch in range(config.max_epoch):
         loss_sup = F.cross_entropy(logits[idx_train], labels[idx_train])
         loss_cr = NASA_Loss(g, logits, idx_train, idx_val, idx_test, meta_paths)
         loss = loss_sup + 0.1 * loss_cr
+    elif argmenter == "GAUG":
+        if model_type == "HAN":
+            logits = model(new_g, new_g.ndata["h"])[target_category]
+        else:
+            logits = model(new_g, augmented_features, config.arg_argmentation_type, config.arg_argmentation_num, method)
+        loss_sup = F.cross_entropy(logits[idx_train], labels[idx_train])
+        loss = loss_nor + loss_sup
     else:
         if model_type == "HAN":
             logits = model(new_g, new_g.ndata["h"])[target_category]
